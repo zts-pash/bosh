@@ -4,7 +4,7 @@ require 'bosh/dev/stemcell_artifacts'
 module Bosh::Dev
   describe StemcellArtifacts do
     describe '.all' do
-      it 'returns pipepline artifacts with all infrastructures for ubuntu and vsphere centos' do
+      it 'returns pipepline artifacts with only vsphere and vcloud for ubuntu trusty' do
         artifacts = instance_double('Bosh::Dev::StemcellArtifacts')
 
         described_class.should_receive(:new) do |version, definitions|
@@ -12,12 +12,8 @@ module Bosh::Dev
 
           matrix = definitions.map { |d| [d.infrastructure.name, d.operating_system.name, d.operating_system.version, d.agent.name] }
           expect(matrix).to eq([
-            %w(vsphere ubuntu lucid go),
             %w(vsphere ubuntu trusty go),
-            ['vsphere', 'centos', nil, 'go'],
-            %w(aws ubuntu lucid go),
-            %w(aws ubuntu trusty go),
-            ['aws', 'centos', nil, 'go'],
+            %w(vcloud ubuntu trusty go),
           ])
 
           artifacts
