@@ -13,7 +13,7 @@ module Bosh::Dev
     def self.build(args)
       new(
         args.fetch(:candidate_build_number),
-        args.fetch(:candidate_sha),
+        args.fetch(:candidate_sha, args.fetch(:candidate_branch)),
         args.fetch(:stable_branch),
         Logger.new(STDERR),
       )
@@ -45,6 +45,23 @@ module Bosh::Dev
 
         git_branch_merger = GitBranchMerger.new
         git_branch_merger.merge('develop', "Merge final release for build #{@candidate_build_number} to develop")
+      end
+    end
+
+    def promote_branch
+      tagger = GitTagger.new(@logger)
+
+      if tagger.stable_tag_for?(@candidate_sha)
+        @logger.info('Skipping promotion since an existing stable tag was found')
+      else
+        release_promoter = ReleaseChangePromoter.new(@candidate_build_number, @candidate_sha, DownloadAdapter.new(@logger))
+        release_promoter.promote
+
+        # Tag & push to branch (instead of master)
+        tagger.tag_and_push(@candidate_sha, @candidate_build_number)
+
+        build = Build.candidate
+        build.promote_artifacts
       end
     end
   end

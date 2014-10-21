@@ -71,4 +71,12 @@ namespace :ci do
     promoter = Bosh::Dev::Promoter.build(args.to_hash)
     promoter.promote
   end
+
+  desc 'Promote candidate branch outside of the promote_artifacts task'
+  task :promote_branch, [:candidate_build_number, :candidate_branch] do |_, args|
+    require 'logger'
+    require 'bosh/dev/promoter'
+    promoter = Bosh::Dev::Promoter.build(args.to_hash)
+    promoter.promote_branch
+  end
 end
