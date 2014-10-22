@@ -66,8 +66,8 @@ module Bosh::Dev
         expect(build_artifacts.all).to include(*gem_artifacts)
       end
 
-      it 'lists commands to update the light stemcell pointer' do
-        expect(build_artifacts.all).to include(*light_stemcell_pointer)
+      it 'does not list commands to update the light stemcell pointer' do
+        expect(build_artifacts.all).to_not include(*light_stemcell_pointer)
       end
 
       it 'lists commands to promote stemcell pipeline artifacts' do
