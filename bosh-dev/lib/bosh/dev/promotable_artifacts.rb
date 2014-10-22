@@ -10,8 +10,7 @@ module Bosh::Dev
     end
 
     def all
-      artifacts = gem_artifacts + release_artifacts + stemcell_artifacts
-      artifacts << light_stemcell_pointer
+      gem_artifacts + release_artifacts + stemcell_artifacts
     end
 
     def release_file
