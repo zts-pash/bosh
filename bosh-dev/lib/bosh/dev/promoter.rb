@@ -14,7 +14,7 @@ module Bosh::Dev
       new(
         args.fetch(:candidate_build_number),
         args.fetch(:candidate_sha, args.fetch(:candidate_branch)),
-        args.fetch(:stable_branch),
+        args.fetch(:stable_branch, 'master'),
         Logger.new(STDERR),
       )
     end
