@@ -7,6 +7,11 @@ OS images are stored in S3 bucket [bosh-os-images](http://s3.amazonaws.com/bosh-
 
 Ubuntu 14.04 images have filename `bosh-ubuntu-trusty-os-image.tgz`
 
+* `eaZz6WVrXgZdwVq9bwQ8h.sE7oSgV9i6`
+  - USN-3084-*: kernel vulnerabilities
+  - bump kernel to 4.4
+  - built from 3151.x-os-image (4923d417e18ef4fdfb8800e4cbbe1a2c485f2de0)
+
 * `DKlqg4jWuVSYWOHaxvTrflJeQNsHNuG9`
   - Backport IPv6 CIS/STIG stories
   - periodic bump
