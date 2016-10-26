@@ -35,11 +35,10 @@ module Bosh::Monitor
         }
 
         if options["http_proxy"]
-          proxy = URI.parse(options["http_proxy"])
-          request[:proxy] = { :host => proxy.host, :port => proxy.port }
+          request[:proxy] = options["http_proxy"]
         end
 
-        send_http_post_request(API_URI, request)
+        send_http_post_sync_request(API_URI, request)
       rescue => e
         logger.error("Error sending pagerduty event: #{e}")
       end
