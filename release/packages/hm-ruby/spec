@@ -1,5 +1,5 @@
 ---
-name: ruby
+name: hm-ruby
 files:
 - ruby/yaml-0.1.5.tar.gz
 - ruby/ruby-2.1.7.tar.gz

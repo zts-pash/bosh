@@ -9,7 +9,7 @@ templates:
 
 packages:
   - health_monitor
-  - ruby
+  - hm-ruby
 
 properties:
   #

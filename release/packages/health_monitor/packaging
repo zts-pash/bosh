@@ -11,7 +11,7 @@ gem 'json', '1.8.3'
 gem 'bosh-monitor'
 EOF
 
-/var/vcap/packages/ruby/bin/bundle install \
+/var/vcap/packages/hm-ruby/bin/bundle install \
   --local \
   --no-prune \
   --binstubs ${BOSH_INSTALL_TARGET}/bin \
