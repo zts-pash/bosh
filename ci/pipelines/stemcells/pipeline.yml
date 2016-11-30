@@ -3,7 +3,6 @@ groups:
   - name: all
     jobs:
       - build-stemcell
-      - publish-stemcells
       - test-stemcells
       - build-warden-boshlite-centos-7
       - build-warden-boshlite-ubuntu-trusty
@@ -212,45 +211,6 @@ jobs:
           - put: environment
             params:
               release: environment
-
-  - name: publish-stemcells
-    serial: true
-    plan:
-      - aggregate:
-        - get: version
-          passed:
-            - test-stemcells
-            - bats-centos
-            - bats-ubuntu
-        - get: bosh-src
-      - task: copy-artifacts
-        file: bosh-src/ci/pipelines/stemcells/tasks/publish.yml
-        params:
-          AWS_ACCESS_KEY_ID: {{stemcell_aws_access_key}}
-          AWS_SECRET_ACCESS_KEY: {{stemcell_aws_secret_key}}
-          CANDIDATE_BUCKET_NAME: {{candidate_stemcell_bucket}}
-          PUBLISHED_BUCKET_NAME: {{published_stemcell_bucket}}
-          COPY_KEYS: |
-            aws/bosh-stemcell-%s-aws-xen-ubuntu-trusty-go_agent.tgz
-            aws/bosh-stemcell-%s-aws-xen-centos-7-go_agent.tgz
-            google/bosh-stemcell-%s-google-kvm-ubuntu-trusty-go_agent.tgz
-            google/bosh-stemcell-%s-google-kvm-centos-7-go_agent.tgz
-            openstack/bosh-stemcell-%s-openstack-kvm-ubuntu-trusty-go_agent.tgz
-            openstack/bosh-stemcell-%s-openstack-kvm-ubuntu-trusty-go_agent-raw.tgz
-            openstack/bosh-stemcell-%s-openstack-kvm-centos-7-go_agent.tgz
-            openstack/bosh-stemcell-%s-openstack-kvm-centos-7-go_agent-raw.tgz
-            warden/bosh-stemcell-%s-warden-boshlite-ubuntu-trusty-go_agent.tgz
-            warden/bosh-stemcell-%s-warden-boshlite-centos-7-go_agent.tgz
-            vsphere/bosh-stemcell-%s-vsphere-esxi-ubuntu-trusty-go_agent.tgz
-            vsphere/bosh-stemcell-%s-vsphere-esxi-centos-7-go_agent.tgz
-            vcloud/bosh-stemcell-%s-vcloud-esxi-ubuntu-trusty-go_agent.tgz
-            azure/bosh-stemcell-%s-azure-hyperv-centos-7-go_agent.tgz
-            azure/bosh-stemcell-%s-azure-hyperv-ubuntu-trusty-go_agent.tgz
-      - put: bosh-src-push
-        params:
-          repository: bosh-src
-          tag: version-tag/tag
-          only_tag: true
 
   #
   # WARDEN
@@ -710,13 +670,6 @@ jobs:
         - {put: environment, params: {release: environment}}
 
 resources:
-  - name: bosh-src-push
-    type: git
-    source:
-      uri: {{bosh_src_push_url}}
-      branch: {{stemcell-branch}}
-      private_key: {{bosh_src_key}}
-
   - name: bosh-src
     type: git
     source:
@@ -727,6 +680,7 @@ resources:
     type: semver
     source:
       driver: s3
+      initial_version: 3312-umask.1.0
       key: {{stemcell_version_key}}
       bucket: {{candidate_stemcell_bucket}}
       access_key_id: {{stemcell_aws_access_key}}
