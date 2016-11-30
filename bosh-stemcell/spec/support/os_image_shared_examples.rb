@@ -403,6 +403,14 @@ shared_examples_for 'every OS image' do
       should contain /^PASS_MIN_DAYS[[:space:]]\+1/
     end
 
+    it('should restrict permission on new user home directories') do
+      should contain /^UMASK[[:space:]]077/
+    end
+
+    it('should not enable user group umask permissions') do
+      should contain /^USERGROUPS_ENAB[[:space:]]no/
+    end
+
     it('should use an approved hashing algorithm to save the password (stig: V-38576)') do
       should contain /^ENCRYPT_METHOD[[:space:]]\+SHA512/
     end
