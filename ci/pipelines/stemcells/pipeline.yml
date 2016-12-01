@@ -680,7 +680,6 @@ resources:
     type: semver
     source:
       driver: s3
-      initial_version: 3312-umask.1.0
       key: {{stemcell_version_key}}
       bucket: {{candidate_stemcell_bucket}}
       access_key_id: {{stemcell_aws_access_key}}
