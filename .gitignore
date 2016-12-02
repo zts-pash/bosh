@@ -42,6 +42,8 @@ micro/tmp
 
 pkg/
 
+/config/private.yml
+
 /release/.blobs
 /release/.dev_builds
 /release/.final_builds/jobs/**/*.tgz
