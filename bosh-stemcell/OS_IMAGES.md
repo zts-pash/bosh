@@ -7,6 +7,10 @@ OS images are stored in S3 bucket [bosh-os-images](http://s3.amazonaws.com/bosh-
 
 Ubuntu 14.04 images have filename `bosh-ubuntu-trusty-os-image.tgz`
 
+* `_8zt4bRLABusSb1ddM6bQZkJqzLt4REa`
+  - Periodic bump
+  - built from 3151.x-os-image (edcf9268c3ffc3d380e06305a78cb5ed720defb8)
+
 * `i88oFoMkWpxltz6yCZi0dozHjFbW.74O`
   - Pin rsyslog to version 8.22.0
   - built from 3151.x-os-image (b8b12f0b464e7e7676323cff1d593dec65935452)
