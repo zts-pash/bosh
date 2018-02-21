@@ -239,7 +239,7 @@ module Bosh
           !new? && !obsolete?
         end
 
-        def network_settings
+        def network_settings(dns_encoder = LocalDnsEncoderManager.create_dns_encoder(@use_short_dns_addresses))
           desired_reservations = network_plans
                                  .reject(&:obsolete?)
                                  .map(&:reservation)
@@ -254,7 +254,7 @@ module Bosh
             @instance.index,
             @instance.uuid,
             root_domain,
-            @use_short_dns_addresses,
+            dns_encoder,
           )
         end
 
@@ -262,14 +262,14 @@ module Bosh
           network_settings.to_hash
         end
 
-        def network_address
-          network_settings.network_address(@use_dns_addresses)
+        def network_address(dns_encoder = LocalDnsEncoderManager.create_dns_encoder(@use_short_dns_addresses))
+          network_settings(dns_encoder).network_address(@use_dns_addresses, @use_short_dns_addresses)
         end
 
         # @param [Boolean] prefer_dns_entry Flag for using DNS entry when available.
         # @return [Hash] A hash mapping network names to their associated address
-        def network_addresses(prefer_dns_entry)
-          network_settings.network_addresses(prefer_dns_entry)
+        def network_addresses(prefer_dns_entry, dns_encoder = LocalDnsEncoderManager.create_dns_encoder(@use_short_dns_addresses))
+          network_settings(dns_encoder).network_addresses(prefer_dns_entry, @use_short_dns_addresses)
         end
 
         def root_domain

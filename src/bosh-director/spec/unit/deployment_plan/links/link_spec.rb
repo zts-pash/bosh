@@ -50,14 +50,14 @@ module Bosh::Director
             allow(source_instance_group).to receive(:needed_instance_plans).and_return([needed_instance_plan])
 
             allow(needed_instance_plan).to receive(:instance).and_return(needed_instance)
-            expect(needed_instance_plan).to receive(:network_addresses).with(true).and_return({'network1' => 'my.address', 'network2' => 'my.other.address'})
-            expect(needed_instance_plan).to receive(:network_addresses).with(false).and_return({'network1' => '10.0.0.1', 'network2' => '10.0.0.2'})
+            expect(needed_instance_plan).to receive(:network_addresses).with(true, instance_of(DnsEncoder)).and_return({'network1' => 'my.address', 'network2' => 'my.other.address'})
+            expect(needed_instance_plan).to receive(:network_addresses).with(false, instance_of(DnsEncoder)).and_return({'network1' => '10.0.0.1', 'network2' => '10.0.0.2'})
 
             allow(needed_instance).to receive(:index).and_return(0)
             allow(needed_instance).to receive(:uuid).and_return('instance-uuid')
             allow(needed_instance).to receive(:bootstrap?).and_return(true)
             allow(needed_instance).to receive_message_chain(:availability_zone, :name).and_return('my_az')
-            expect(needed_instance_plan).to receive(:network_address).and_return('my.address')
+            expect(needed_instance_plan).to receive(:network_address).with(instance_of(DnsEncoder)).and_return('my.address')
           end
 
           it 'returns correct spec structure, with network name' do

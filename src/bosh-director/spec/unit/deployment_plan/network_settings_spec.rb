@@ -2,6 +2,13 @@ require 'spec_helper'
 
 module Bosh::Director::DeploymentPlan
   describe NetworkSettings do
+    let(:dns_encoder) do
+      dns_encoder = Bosh::Director::DnsEncoder.new({},
+                                   az,
+                                   {'net_a' => {'ip' => '10.0.0.6', 'netmask' => '255.255.255.0', 'gateway' => '10.0.0.1'}},
+                                   {"uuid-1" => '1'}
+      )
+    end
     let(:network_settings) do
       NetworkSettings.new(
         'fake-job',
@@ -13,7 +20,7 @@ module Bosh::Director::DeploymentPlan
         3,
         'uuid-1',
         'bosh1.tld',
-        use_short_dns_addresses,
+        dns_encoder,
       )
     end
     let(:instance_group) do
@@ -85,7 +92,7 @@ module Bosh::Director::DeploymentPlan
         describe '#network_address' do
           let(:prefer_dns_addresses) { true }
           it 'returns the ip address for manual networks on the instance' do
-            expect(network_settings.network_address(prefer_dns_addresses)).to eq('10.0.0.6')
+            expect(network_settings.network_address(prefer_dns_addresses, use_short_dns_addresses)).to eq('10.0.0.6')
           end
         end
       end
@@ -102,7 +109,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('10.0.0.6')
             end
           end
 
@@ -112,14 +119,14 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the dns record for that network' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
 
             context 'when use_short_dns_addresses is true' do
               let(:use_short_dns_addresses) { true }
 
               it 'returns the short dns address' do
-                expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
+                expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('q-m1n1s0.q-g1.bosh1.tld')
               end
             end
           end
@@ -138,7 +145,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
           end
 
@@ -148,14 +155,14 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
           end
 
           context 'when use_short_dns_addresses is true' do
             let(:use_short_dns_addresses) { true }
             it 'returns the short dns address' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('q-m1n1s0.q-g1.bosh1.tld')
             end
           end
         end
@@ -206,18 +213,18 @@ module Bosh::Director::DeploymentPlan
             3,
             'uuid-1',
             'bosh1.tld',
-            false
+            dns_encoder
           )
         end
 
 
         it 'returns the ip address of addressable network' do
-          expect(network_settings.network_address(false)).to eq("10.0.0.7")
+          expect(network_settings.network_address(false, use_short_dns_addresses)).to eq("10.0.0.7")
         end
 
         it 'returns the dns address of addressable network' do
           allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-          expect(network_settings.network_address(true)).to eq('uuid-1.fake-job.net-public.fake-deployment.bosh1.tld')
+          expect(network_settings.network_address(true, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-public.fake-deployment.bosh1.tld')
         end
       end
 
@@ -231,7 +238,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('10.0.0.6')
             end
           end
 
@@ -241,7 +248,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('10.0.0.6')
             end
           end
         end
@@ -259,7 +266,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
           end
 
@@ -269,7 +276,7 @@ module Bosh::Director::DeploymentPlan
             end
 
             it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
+              expect(network_settings.network_address(prefer_dns_entry, use_short_dns_addresses)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
           end
         end
@@ -295,12 +302,12 @@ module Bosh::Director::DeploymentPlan
         let(:reservations) {[Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)]}
         context 'when DNS entries are requested' do
           it 'includes the network name and domain record' do
-            expect(network_settings.network_addresses(true)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
+            expect(network_settings.network_addresses(true, use_short_dns_addresses)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
           end
         end
         context 'when DNS entries are NOT requested' do
           it 'still includes the network name and domain record' do
-            expect(network_settings.network_addresses(false)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
+            expect(network_settings.network_addresses(false, use_short_dns_addresses)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
           end
         end
       end
@@ -313,13 +320,13 @@ module Bosh::Director::DeploymentPlan
 
           context 'and DNS entries are requested' do
             it 'includes the network name and ip' do
-              expect(network_settings.network_addresses(true)).to eq({'net_a' => '10.0.0.6'})
+              expect(network_settings.network_addresses(true, use_short_dns_addresses)).to eq({'net_a' => '10.0.0.6'})
             end
           end
 
           context 'and DNS entries are NOT requested' do
             it 'includes the network name and ip' do
-              expect(network_settings.network_addresses(false)).to eq({'net_a' => '10.0.0.6'})
+              expect(network_settings.network_addresses(false, use_short_dns_addresses)).to eq({'net_a' => '10.0.0.6'})
             end
           end
         end
@@ -331,13 +338,13 @@ module Bosh::Director::DeploymentPlan
 
           context 'and DNS entries are requested' do
             it 'includes the network name dns record' do
-              expect(network_settings.network_addresses(true)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld'})
+              expect(network_settings.network_addresses(true, use_short_dns_addresses)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld'})
             end
           end
 
           context 'and DNS entries are NOT requested' do
             it 'includes the network name dns record' do
-              expect(network_settings.network_addresses(false)).to eq({'net_a' => '10.0.0.6'})
+              expect(network_settings.network_addresses(false, use_short_dns_addresses)).to eq({'net_a' => '10.0.0.6'})
             end
           end
         end

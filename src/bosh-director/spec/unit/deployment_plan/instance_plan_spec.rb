@@ -696,7 +696,7 @@ module Bosh::Director::DeploymentPlan
             anything,
             anything,
             anything,
-            true
+            anything
           )
 
           instance_plan.network_settings
@@ -711,7 +711,7 @@ module Bosh::Director::DeploymentPlan
         let(:use_dns_addresses) { false }
 
         it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with(use_dns_addresses)
+          expect(network_settings).to receive(:network_address).with(use_dns_addresses, false)
           instance_plan.network_address
         end
       end
@@ -720,7 +720,7 @@ module Bosh::Director::DeploymentPlan
         let(:use_dns_addresses) { true }
 
         it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with(use_dns_addresses)
+          expect(network_settings).to receive(:network_address).with(use_dns_addresses, false)
           instance_plan.network_address
         end
       end

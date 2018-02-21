@@ -11,6 +11,7 @@ module Bosh::Director
       end
 
       def spec
+        dns_encoder = LocalDnsEncoderManager.create_dns_encoder(true)
         {
           'deployment_name' => @deployment_name,
           'domain' => Bosh::Director::Config.root_domain,
@@ -27,9 +28,9 @@ module Bosh::Director
               'index' => instance.index,
               'bootstrap' => instance.bootstrap?,
               'az' => availability_zone,
-              'address' => instance_plan.network_address,
-              'addresses' => instance_plan.network_addresses(false),
-              'dns_addresses' => instance_plan.network_addresses(true),
+              'address' => instance_plan.network_address(dns_encoder),
+              'addresses' => instance_plan.network_addresses(false, dns_encoder),
+              'dns_addresses' => instance_plan.network_addresses(true, dns_encoder),
             }
           end
         }

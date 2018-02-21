@@ -1,6 +1,6 @@
 module Bosh::Director
   class DeploymentPlan::NetworkSettings
-    def initialize(instance_group_name, deployment_name, default_network, desired_reservations, current_networks, availability_zone, instance_index, instance_id, root_domain, use_short_dns_addresses)
+    def initialize(instance_group_name, deployment_name, default_network, desired_reservations, current_networks, availability_zone, instance_index, instance_id, root_domain, dns_encoder)
       @instance_group_name = instance_group_name
       @desired_reservations = desired_reservations
       @default_network = default_network
@@ -10,7 +10,7 @@ module Bosh::Director
       @instance_id = instance_id
       @current_networks = current_networks
       @root_domain = root_domain
-      @dns_encoder = LocalDnsEncoderManager.create_dns_encoder(use_short_dns_addresses)
+      @dns_encoder = dns_encoder
     end
 
     def to_hash
@@ -47,18 +47,18 @@ module Bosh::Director
       dns_record_info
     end
 
-    def network_address(prefer_dns_entry)
+    def network_address(prefer_dns_entry, use_short_dns_addresses)
       network_name = @default_network['addressable'] || @default_network['gateway']
-      get_address(network_name, to_hash[network_name], prefer_dns_entry)
+      get_address(network_name, to_hash[network_name], prefer_dns_entry, use_short_dns_addresses)
     end
 
     # @param [Boolean] prefer_dns_entry Flag for using DNS entry when available.
     # @return [Hash] A hash mapping network names to their associated address
-    def network_addresses(prefer_dns_entry)
+    def network_addresses(prefer_dns_entry, use_short_dns_addresses)
       network_addresses = {}
 
       to_hash.each do |network_name, network|
-        network_addresses[network_name] = get_address(network_name, network, prefer_dns_entry)
+        network_addresses[network_name] = get_address(network_name, network, prefer_dns_entry, use_short_dns_addresses)
       end
 
       network_addresses
@@ -66,7 +66,7 @@ module Bosh::Director
 
     private
 
-    def get_address(network_name, network, prefer_dns_entry = true)
+    def get_address(network_name, network, prefer_dns_entry = true, use_short_dns_addresses)
       if should_use_dns?(network, prefer_dns_entry)
         return @dns_encoder.encode_query({
           root_domain: @root_domain,
@@ -74,7 +74,7 @@ module Bosh::Director
           deployment_name: @deployment_name,
           uuid: @instance_id,
           instance_group: @instance_group_name,
-        })
+        }, use_short_dns_addresses)
       else
         return network['ip']
       end

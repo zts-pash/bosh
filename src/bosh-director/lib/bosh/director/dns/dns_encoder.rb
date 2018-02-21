@@ -8,16 +8,16 @@ module Bosh::Director
       @instance_uuid_num_hash = instance_uuid_num_hash
     end
 
-    def encode_query(criteria)
+    def encode_query(criteria, use_short_dns_addresses)
       octets = []
 
-      if criteria[:uuid].nil? || @short_dns_enabled
-        octets << "q-#{query_slug(criteria)}"
+      if criteria[:uuid].nil? || use_short_dns_addresses
+        octets << "q-#{query_slug(criteria, use_short_dns_addresses)}"
       else
         octets << criteria[:uuid]
       end
 
-      if @short_dns_enabled
+      if use_short_dns_addresses
         octets << encode_service_group(criteria)
       else
         octets += encode_long_subdomains(criteria)
@@ -66,7 +66,7 @@ module Bosh::Director
 
     private
 
-    def query_slug(criteria)
+    def query_slug(criteria, use_short_dns_addresses)
       queries = []
       azs = criteria[:azs]
       aznums = []
@@ -80,7 +80,7 @@ module Bosh::Director
         "a#{item}"
       end
 
-      if @short_dns_enabled
+      if use_short_dns_addresses
         uuid = criteria[:uuid]
         unless uuid.nil?
           instance_num = num_for_uuid(uuid)
