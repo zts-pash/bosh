@@ -5,7 +5,8 @@ module Bosh::Director::DeploymentPlan
     subject(:plan) { PlacementPlanner::Plan.new(instance_plan_factory, network_planner, logger) }
     let(:network_planner) { NetworkPlanner::Planner.new(logger) }
     let(:network_reservation_repository) { BD::DeploymentPlan::NetworkReservationRepository.new(deployment, logger) }
-    let(:instance_plan_factory) { InstancePlanFactory.new(instance_repo, {}, SkipDrain.new(true), index_assigner, network_reservation_repository) }
+    let(:dns_encoder) { {} }
+    let(:instance_plan_factory) { InstancePlanFactory.new(instance_repo, {}, SkipDrain.new(true), index_assigner, network_reservation_repository, dns_encoder) }
     let(:index_assigner) { PlacementPlanner::IndexAssigner.new(deployment_model) }
     let(:instance_repo) { Bosh::Director::DeploymentPlan::InstanceRepository.new(network_reservation_repository, logger) }
     let(:instance_plans) do

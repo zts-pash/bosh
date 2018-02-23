@@ -2,7 +2,7 @@ require 'spec_helper'
 
 module Bosh::Director
   describe DeploymentPlan::Assembler do
-    subject(:assembler) { DeploymentPlan::Assembler.new(deployment_plan, stemcell_manager, powerdns_manager) }
+    subject(:assembler) { DeploymentPlan::Assembler.new(deployment_plan, stemcell_manager, powerdns_manager, dns_encoder) }
     let(:deployment_plan) { instance_double('Bosh::Director::DeploymentPlan::Planner',
       name: 'simple',
       using_global_networking?: false,
@@ -14,6 +14,7 @@ module Bosh::Director
     let(:stemcell_manager) { nil }
     let(:powerdns_manager) { PowerDnsManagerProvider.create }
     let(:event_log) { Config.event_log }
+    let(:dns_encoder) { instance_double(DnsEncoder) }
 
     describe '#bind_models' do
       let(:instance_model) { Models::Instance.make(job: 'old-name') }
@@ -92,7 +93,7 @@ module Bosh::Director
 
         it 'passes tags to instance plan factory' do
           expected_options = {'recreate' => false, 'tags' => {'key1' => 'value1'}, 'use_dns_addresses' => false, 'use_short_dns_addresses' => false,'randomize_az_placement' => false}
-          expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options).and_call_original
+          expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options, anything).and_call_original
           assembler.bind_models({tags: {'key1' => 'value1'}})
         end
       end
@@ -106,7 +107,7 @@ module Bosh::Director
 
           it 'passes use_dns_addresses, use_short_dns_addresses and randomize_az_placement feature flags to instance plan factory' do
             expected_options = {'recreate' => false, 'tags' => {}, 'use_dns_addresses' => true, 'randomize_az_placement' => true, 'use_short_dns_addresses' => false}
-            expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options).and_call_original
+            expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options, anything).and_call_original
             assembler.bind_models
           end
 
@@ -117,7 +118,7 @@ module Bosh::Director
 
             it 'passes use_short_dns_addresses to instance plan factory' do
               expected_options = {'recreate' => false, 'tags' => {}, 'use_dns_addresses' => true, 'randomize_az_placement' => true, 'use_short_dns_addresses' => true}
-              expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options).and_call_original
+              expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options, anything).and_call_original
               assembler.bind_models
             end
           end
@@ -131,7 +132,7 @@ module Bosh::Director
 
           it 'passes use_dns_addresses, use_short_dns_addresses and randomize_az_placement to instance plan factory' do
             expected_options = {'recreate' => false, 'tags' => {}, 'use_dns_addresses' => false, 'randomize_az_placement' => false, 'use_short_dns_addresses' => false}
-            expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options).and_call_original
+            expect(DeploymentPlan::InstancePlanFactory).to receive(:new).with(anything, anything, anything, anything, anything, expected_options, anything).and_call_original
             assembler.bind_models
           end
         end
@@ -404,9 +405,10 @@ module Bosh::Director
           deployment_plan,
           an_instance_of(Api::StemcellManager),
           an_instance_of(PowerDnsManager),
+          dns_encoder
         ).and_call_original
 
-        DeploymentPlan::Assembler.create(deployment_plan)
+        DeploymentPlan::Assembler.create(deployment_plan, dns_encoder)
       end
     end
   end

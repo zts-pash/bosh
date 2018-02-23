@@ -7,9 +7,11 @@ describe Bosh::Director::DeploymentPlan::LinksResolver do
     planner_factory = Bosh::Director::DeploymentPlan::PlannerFactory.create(logger)
     manifest = Bosh::Director::Manifest.load_from_hash(deployment_manifest, YAML.dump(deployment_manifest), [], [], {:resolve_interpolation => false})
     planner = planner_factory.create_from_manifest(manifest, [], [], {})
-    Bosh::Director::DeploymentPlan::Assembler.create(planner).bind_models
+    Bosh::Director::DeploymentPlan::Assembler.create(planner, dns_encoder).bind_models
     planner
   end
+
+  let(:dns_encoder) { Bosh::Director::DnsEncoder.new }
 
   let(:deployment_manifest) do
     generate_deployment_manifest('fake-deployment', links, ['127.0.0.3', '127.0.0.4'])
@@ -624,7 +626,7 @@ Unable to process links for deployment. Errors are:
           manifest = Bosh::Director::Manifest.load_from_hash(deployment_manifest2, YAML.dump(deployment_manifest2), @cloud_config, [], {:resolve_interpolation => false})
 
           planner = planner_factory.create_from_manifest(manifest, @cloud_config, [], {})
-          Bosh::Director::DeploymentPlan::Assembler.create(planner).bind_models
+          Bosh::Director::DeploymentPlan::Assembler.create(planner, dns_encoder).bind_models
           planner
         end
 
@@ -992,7 +994,7 @@ Unable to process links for deployment. Errors are:
         manifest = Bosh::Director::Manifest.load_from_hash(deployment_manifest, YAML.dump(deployment_manifest), cloud_configs, [], {:resolve_interpolation => false})
 
         planner = planner_factory.create_from_manifest(manifest, cloud_configs, [], {})
-        Bosh::Director::DeploymentPlan::Assembler.create(planner).bind_models
+        Bosh::Director::DeploymentPlan::Assembler.create(planner, dns_encoder).bind_models
         planner
       end
 

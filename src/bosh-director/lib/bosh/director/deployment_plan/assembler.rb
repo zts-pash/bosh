@@ -6,15 +6,16 @@ module Bosh::Director
     include IpUtil
     include LegacyDeploymentHelper
 
-    def self.create(deployment_plan)
-      new(deployment_plan, Api::StemcellManager.new, PowerDnsManagerProvider.create)
+    def self.create(deployment_plan, dns_encoder)
+      new(deployment_plan, Api::StemcellManager.new, PowerDnsManagerProvider.create, dns_encoder)
     end
 
-    def initialize(deployment_plan, stemcell_manager, powerdns_manager)
+    def initialize(deployment_plan, stemcell_manager, powerdns_manager, dns_encoder)
       @deployment_plan = deployment_plan
       @logger = Config.logger
       @stemcell_manager = stemcell_manager
       @powerdns_manager = powerdns_manager
+      @dns_encoder = dns_encoder
     end
 
     def bind_models(options = {})
@@ -51,7 +52,8 @@ module Bosh::Director
           'use_short_dns_addresses' => @deployment_plan.use_short_dns_addresses?,
           'randomize_az_placement' => @deployment_plan.randomize_az_placement?,
           'tags' => tags
-        }
+        },
+        @dns_encoder
       )
       instance_planner = Bosh::Director::DeploymentPlan::InstancePlanner.new(instance_plan_factory, @logger)
       desired_instance_groups = @deployment_plan.instance_groups

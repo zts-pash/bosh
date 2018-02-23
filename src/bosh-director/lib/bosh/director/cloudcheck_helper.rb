@@ -63,7 +63,7 @@ module Bosh::Director
       planner = factory.create_from_model(deployment_model)
       dns_encoder = LocalDnsEncoderManager.create_dns_encoder(planner.use_short_dns_addresses?)
 
-      instance_plan_to_create = create_instance_plan(instance_model)
+      instance_plan_to_create = create_instance_plan(instance_model, dns_encoder)
 
       Bosh::Director::Core::Templates::TemplateBlobCache.with_fresh_cache do |template_cache|
         vm_creator(template_cache, dns_encoder).create_for_instance_plan(
@@ -132,7 +132,7 @@ module Bosh::Director
 
     private
 
-    def create_instance_plan(instance_model)
+    def create_instance_plan(instance_model, dns_encoder)
       stemcell = DeploymentPlan::Stemcell.parse(instance_model.spec['stemcell'])
       stemcell.add_stemcell_models
       stemcell.deployment_model = instance_model.deployment
@@ -167,6 +167,7 @@ module Bosh::Director
         desired_instance: DeploymentPlan::DesiredInstance.new,
         recreate_deployment: true,
         tags: instance_from_model.deployment_model.tags,
+        dns_encoder: dns_encoder
       )
     end
 

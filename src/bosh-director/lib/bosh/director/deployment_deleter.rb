@@ -13,7 +13,8 @@ module Bosh::Director
           existing_instance: instance_model,
           instance: nil,
           desired_instance: nil,
-          network_plans: []
+          network_plans: [],
+          dns_encoder: LocalDnsEncoderManager.create_dns_encoder(false)
         )
       end
       event_log_stage = @event_log.begin_stage('Deleting instances', instance_plans.size)

@@ -13,7 +13,7 @@ module Bosh::Director
     let(:encoder) { DnsEncoder.new }
 
     let(:instance_plan) do
-      DeploymentPlan::InstancePlan.new(existing_instance: instance_model, desired_instance: DeploymentPlan::DesiredInstance.new(instance_group), instance: instance)
+      DeploymentPlan::InstancePlan.new(existing_instance: instance_model, desired_instance: DeploymentPlan::DesiredInstance.new(instance_group), instance: instance, dns_encoder: encoder)
     end
 
     let(:instance) do

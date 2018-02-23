@@ -25,8 +25,9 @@ module Bosh::Director
 
         deployment_plan
       end
+      let(:dns_encoder) { {} }
 
-      let (:deployment_assembler) { DeploymentPlan::Assembler.create(deployment_plan) }
+      let (:deployment_assembler) { DeploymentPlan::Assembler.create(deployment_plan, dns_encoder) }
 
       let!(:stemcell) { Models::Stemcell.make(name: 'ubuntu-stemcell', version: '1') }
       let!(:cloud_config) {

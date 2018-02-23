@@ -9,8 +9,8 @@ module Bosh::Director
 
         attr_reader :compilations_performed
 
-        def self.create(deployment_plan)
-          compilation_pool = CompilationInstancePool.create(deployment_plan)
+        def self.create(deployment_plan, dns_encoder)
+          compilation_pool = CompilationInstancePool.create(deployment_plan, dns_encoder)
           new(
             deployment_plan.name,
             deployment_plan.instance_groups,

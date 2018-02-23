@@ -31,7 +31,8 @@ module Bosh::Director::DeploymentPlan
           network_plans: network_plans,
           existing_instance: nil,
           instance: instance,
-        )
+          dns_encoder: {},
+          )
       end
       let(:initial_az) { nil }
       let(:desired_az) { AvailabilityZone.new('zone_1', {}) }

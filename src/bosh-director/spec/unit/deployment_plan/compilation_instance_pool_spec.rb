@@ -2,7 +2,7 @@ require File.expand_path('../../../spec_helper', __FILE__)
 
 module Bosh::Director
   describe DeploymentPlan::CompilationInstancePool do
-    subject(:compilation_instance_pool) { DeploymentPlan::CompilationInstancePool.new(instance_reuser, instance_provider, logger, instance_deleter, max_instance_count) }
+    subject(:compilation_instance_pool) { DeploymentPlan::CompilationInstancePool.new(instance_reuser, instance_provider, logger, instance_deleter, max_instance_count, dns_encoder) }
 
     let(:instance_reuser) { InstanceReuser.new }
     let(:cloud) { Config.cloud }
@@ -500,9 +500,10 @@ module Bosh::Director
           logger,
           instance_deleter,
           n_workers,
+          dns_encoder
         ).and_call_original
 
-        DeploymentPlan::CompilationInstancePool.create(deployment_plan)
+        DeploymentPlan::CompilationInstancePool.create(deployment_plan, dns_encoder)
       end
     end
   end

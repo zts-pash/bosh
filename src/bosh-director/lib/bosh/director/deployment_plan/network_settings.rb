@@ -1,6 +1,6 @@
 module Bosh::Director
   class DeploymentPlan::NetworkSettings
-    def initialize(instance_group_name, deployment_name, default_network, desired_reservations, current_networks, availability_zone, instance_index, instance_id, root_domain, use_short_dns_addresses)
+    def initialize(instance_group_name, deployment_name, default_network, desired_reservations, current_networks, availability_zone, instance_index, instance_id, root_domain, dns_encoder)
       @instance_group_name = instance_group_name
       @desired_reservations = desired_reservations
       @default_network = default_network
@@ -10,7 +10,7 @@ module Bosh::Director
       @instance_id = instance_id
       @current_networks = current_networks
       @root_domain = root_domain
-      @dns_encoder = LocalDnsEncoderManager.create_dns_encoder(use_short_dns_addresses)
+      @dns_encoder = dns_encoder
     end
 
     def to_hash

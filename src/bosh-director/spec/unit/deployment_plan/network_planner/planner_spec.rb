@@ -5,7 +5,7 @@ module Bosh::Director::DeploymentPlan
     include Bosh::Director::IpUtil
 
     subject(:planner) { NetworkPlanner::Planner.new(logger) }
-    let(:instance_plan) { InstancePlan.new(existing_instance: nil, desired_instance: desired_instance, instance: instance) }
+    let(:instance_plan) { InstancePlan.new(existing_instance: nil, desired_instance: desired_instance, instance: instance, dns_encoder: {}) }
     let(:deployment) { instance_double(Planner, model: Bosh::Director::Models::Deployment.make) }
     let(:desired_instance) { DesiredInstance.new(job, deployment) }
     let(:instance_model) { Bosh::Director::Models::Instance.make }

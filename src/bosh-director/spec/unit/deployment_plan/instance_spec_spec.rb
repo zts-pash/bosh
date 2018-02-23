@@ -89,7 +89,7 @@ module Bosh::Director::DeploymentPlan
     let(:deployment) { Bosh::Director::Models::Deployment.make(name: deployment_name) }
     let(:instance_model) { Bosh::Director::Models::Instance.make(deployment: deployment, bootstrap: true, uuid: 'uuid-1') }
     let(:instance_plan) do
-      InstancePlan.new(existing_instance: nil, desired_instance: DesiredInstance.new(instance_group), instance: instance)
+      InstancePlan.new(existing_instance: nil, desired_instance: DesiredInstance.new(instance_group), instance: instance, dns_encoder: Bosh::Director::DnsEncoder.new)
     end
     let(:persistent_disk_collection) { PersistentDiskCollection.new(logger) }
 

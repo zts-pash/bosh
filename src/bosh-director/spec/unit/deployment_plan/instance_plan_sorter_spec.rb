@@ -17,12 +17,14 @@ module Bosh::Director::DeploymentPlan
         bootstrap_instance.bind_existing_instance_model(BD::Models::Instance.make(uuid: 'a-uuid', index: 0, job: 'job_name', bootstrap: true))
         bootstrap_instance
       }
+      let(:dns_encoder) { Bosh::Director::DnsEncoder.new({}, bootstrap_az, [], bootstrap_instance) }
 
       let (:bootstrap_instance_plan) { InstancePlan.new(
         existing_instance: bootstrap_instance.model,
         desired_instance: desired_instance,
         instance: bootstrap_instance,
-        network_plans: []) }
+        network_plans: [],
+        dns_encoder: dns_encoder) }
 
       context 'when there are multiple instance plans' do
         let (:az_2) { AvailabilityZone.new('az2_name', {}) }
@@ -31,12 +33,14 @@ module Bosh::Director::DeploymentPlan
           instance.bind_existing_instance_model(BD::Models::Instance.make(uuid: 'bb-uuid1', index: 4, job: 'job_name'))
           instance
         }
+        let(:dns_encoder) { Bosh::Director::DnsEncoder.new({}, az_2, [], instance_in_bootstrap_az) }
 
         let (:instance_plan_in_bootstrap_az) { InstancePlan.new(
           existing_instance: instance_in_bootstrap_az.model,
           desired_instance: desired_instance,
           instance: instance_in_bootstrap_az,
-          network_plans: []) }
+          network_plans: [],
+          dns_encoder: dns_encoder) }
 
         it 'should put the bootstrap node first' do
           sorted_instance_plans = instance_plan_sorter.sort([instance_plan_in_bootstrap_az, bootstrap_instance_plan])
@@ -50,7 +54,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance2_in_bootstrap_az.model,
             desired_instance: desired_instance,
             instance: instance2_in_bootstrap_az,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
           sorted_instance_plans = instance_plan_sorter.sort([instance_plan2_in_bootstrap_az, instance_plan_in_bootstrap_az, bootstrap_instance_plan])
           expect(sorted_instance_plans).to eq([bootstrap_instance_plan, instance_plan_in_bootstrap_az, instance_plan2_in_bootstrap_az])
         end
@@ -62,7 +67,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance2_not_in_bootstrap_az.model,
             desired_instance: desired_instance,
             instance: instance2_not_in_bootstrap_az,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
           sorted_instance_plans = instance_plan_sorter.sort([instance_plan2_not_in_bootstrap_az, instance_plan_in_bootstrap_az, bootstrap_instance_plan])
 
           expect(sorted_instance_plans).to eq([bootstrap_instance_plan, instance_plan_in_bootstrap_az, instance_plan2_not_in_bootstrap_az])
@@ -75,7 +81,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance2_not_in_bootstrap_az.model,
             desired_instance: desired_instance,
             instance: instance2_not_in_bootstrap_az,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
 
           instance3_not_in_bootstrap_az = Instance.create_from_instance_group(instance_group, 3, 'started', nil, {}, az_2, logger)
           instance3_not_in_bootstrap_az.bind_existing_instance_model(BD::Models::Instance.make(uuid: '2-uuid2', index: 3, job: 'job_name'))
@@ -83,7 +90,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance3_not_in_bootstrap_az.model,
             desired_instance: desired_instance,
             instance: instance3_not_in_bootstrap_az,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
           sorted_instance_plans = instance_plan_sorter.sort([instance_plan2_not_in_bootstrap_az, instance_plan3_not_in_bootstrap_az, instance_plan_in_bootstrap_az, bootstrap_instance_plan])
 
           expect(sorted_instance_plans).to eq([bootstrap_instance_plan, instance_plan_in_bootstrap_az, instance_plan2_not_in_bootstrap_az, instance_plan3_not_in_bootstrap_az])
@@ -99,7 +107,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance4_az_3.model,
             desired_instance: desired_instance,
             instance: instance4_az_3,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
 
           instance5_az_4 = Instance.create_from_instance_group(instance_group, 8, 'started', nil, {}, az_4, logger)
           instance5_az_4.bind_existing_instance_model(BD::Models::Instance.make(uuid: '42341-uuid2', index: 8, job: 'job_name'))
@@ -107,7 +116,8 @@ module Bosh::Director::DeploymentPlan
             existing_instance: instance5_az_4.model,
             desired_instance: desired_instance,
             instance: instance5_az_4,
-            network_plans: [])
+            network_plans: [],
+            dns_encoder: dns_encoder)
 
           sorted_instance_plans = instance_plan_sorter.sort([bootstrap_instance_plan, instance_plan5_az_4, instance_plan3_az_3])
 
@@ -122,7 +132,8 @@ module Bosh::Director::DeploymentPlan
               existing_instance: instance2_without_az.model,
               desired_instance: desired_instance,
               instance: instance2_without_az,
-              network_plans: [])
+              network_plans: [],
+              dns_encoder: dns_encoder)
             sorted_instance_plans = instance_plan_sorter.sort([instance_plan2_without_az, bootstrap_instance_plan])
 
             expect(sorted_instance_plans).to eq([bootstrap_instance_plan, instance_plan2_without_az])

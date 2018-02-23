@@ -480,13 +480,16 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         desired_instance: instance_double(Bosh::Director::DeploymentPlan::DesiredInstance),
         existing_instance: nil,
         instance: instance0,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan1 = BD::DeploymentPlan::InstancePlan.new(
         desired_instance: instance_double(Bosh::Director::DeploymentPlan::DesiredInstance),
         existing_instance: nil,
         instance: instance1,
+        dns_encoder: Bosh::Director::DnsEncoder.new
+
       )
-      obsolete_plan = BD::DeploymentPlan::InstancePlan.new(desired_instance: nil, existing_instance: nil, instance: instance1)
+      obsolete_plan = BD::DeploymentPlan::InstancePlan.new(desired_instance: nil, existing_instance: nil, instance: instance1, dns_encoder: Bosh::Director::DnsEncoder.new)
 
       instance_group.add_instance_plans([instance_plan0, instance_plan1, obsolete_plan])
     end
@@ -508,11 +511,13 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         desired_instance: BD::DeploymentPlan::DesiredInstance.new,
         existing_instance: nil,
         instance: instance0,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan1 = Bosh::Director::DeploymentPlan::InstancePlan.new(
         desired_instance: BD::DeploymentPlan::DesiredInstance.new,
         existing_instance: nil,
         instance: instance1,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan0.network_plans = [
         BD::DeploymentPlan::NetworkPlanner::Plan.new(reservation: instance0_reservation),
@@ -527,6 +532,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         desired_instance: nil,
         existing_instance: nil,
         instance: instance1,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
 
       instance_group.add_instance_plans([instance_plan0, instance_plan1, obsolete_plan])
@@ -671,16 +677,19 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         instance: instance1,
         existing_instance: nil,
         desired_instance: desired_instance,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan2 = BD::DeploymentPlan::InstancePlan.new(
         instance: instance2,
         existing_instance: nil,
         desired_instance: desired_instance,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan3 = BD::DeploymentPlan::InstancePlan.new(
         instance: instance3,
         existing_instance: nil,
         desired_instance: nil,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
 
       unsorted_plans = [instance_plan3, instance_plan1, instance_plan2]
@@ -741,11 +750,13 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
         instance: instance1,
         existing_instance: nil,
         desired_instance: desired_instance,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_plan2 = BD::DeploymentPlan::InstancePlan.new(
         instance: instance2,
         existing_instance: nil,
         desired_instance: desired_instance,
+        dns_encoder: Bosh::Director::DnsEncoder.new
       )
       instance_group.add_instance_plans([instance_plan1, instance_plan2])
 

@@ -28,6 +28,7 @@ module Bosh
           desired_instance: desired_instance,
           instance: instance,
           network_plans: [network_plan],
+          dns_encoder: dns_encoder
         )
       end
 

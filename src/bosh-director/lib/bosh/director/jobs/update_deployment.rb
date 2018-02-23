@@ -74,8 +74,8 @@ module Bosh::Director
           event_log_stage.advance_and_track('Preparing deployment') do
             planner_factory = DeploymentPlan::PlannerFactory.create(logger)
             deployment_plan = planner_factory.create_from_manifest(deployment_manifest_object, cloud_config_models, runtime_config_models, @options)
-            deployment_assembler = DeploymentPlan::Assembler.create(deployment_plan)
             dns_encoder = LocalDnsEncoderManager.new_encoder_with_updated_index(deployment_plan)
+            deployment_assembler = DeploymentPlan::Assembler.create(deployment_plan, dns_encoder)
             generate_variables_values(deployment_plan.variables, @deployment_name) if is_deploy_action
             deployment_assembler.bind_models({:should_bind_new_variable_set => is_deploy_action})
           end
@@ -95,7 +95,7 @@ module Bosh::Director
             if dry_run?
               return "/deployments/#{deployment_plan.name}"
             else
-              compilation_step(deployment_plan).perform
+              compilation_step(deployment_plan, dns_encoder).perform
 
               update_stage(deployment_plan, dns_encoder).perform
 
@@ -180,8 +180,8 @@ module Bosh::Director
         false
       end
 
-      def compilation_step(deployment_plan)
-        DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan)
+      def compilation_step(deployment_plan, dns_encoder)
+        DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan, dns_encoder)
       end
 
       def update_stage(deployment_plan, dns_encoder)

@@ -53,7 +53,7 @@ module Bosh::Director
 
             render_templates(errand_instance_group, template_blob_cache, dns_encoder)
             target_instance = errand_instance_group.instances.first
-            compile_step(deployment_planner).perform
+            compile_step(deployment_planner, dns_encoder).perform
 
             if matching_instances.include?(target_instance)
               Errand::LifecycleErrandStep.new(
@@ -123,8 +123,8 @@ module Bosh::Director
       instance_groups
     end
 
-    def compile_step(deployment_plan)
-      DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan)
+    def compile_step(deployment_plan, dns_encoder)
+      DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan, dns_encoder)
     end
   end
 
@@ -137,7 +137,8 @@ module Bosh::Director
       deployment_model = Api::DeploymentManager.new.find_by_name(deployment_name)
       planner_factory = DeploymentPlan::PlannerFactory.create(@logger)
       deployment_planner = planner_factory.create_from_model(deployment_model)
-      DeploymentPlan::Assembler.create(deployment_planner).bind_models(instances: instances)
+      dns_encoder = LocalDnsEncoderManager.create_dns_encoder(deployment_planner.use_short_dns_addresses?)
+      DeploymentPlan::Assembler.create(deployment_planner, dns_encoder).bind_models(instances: instances)
       deployment_planner
     end
   end

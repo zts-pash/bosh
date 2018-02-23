@@ -2,7 +2,7 @@ module Bosh::Director
   module DeploymentPlan
     class CompilationInstancePool
       class << self
-        def create(deployment_plan)
+        def create(deployment_plan, dns_encoder)
           logger = Config.logger
 
           new(
@@ -11,6 +11,7 @@ module Bosh::Director
             logger,
             make_instance_deleter(logger, deployment_plan),
             deployment_plan.compilation.workers,
+            dns_encoder
           )
         end
 
@@ -38,13 +39,14 @@ module Bosh::Director
         end
       end
 
-      def initialize(instance_reuser, instance_provider, logger, instance_deleter, max_instance_count)
+      def initialize(instance_reuser, instance_provider, logger, instance_deleter, max_instance_count, dns_encoder)
         @instance_reuser = instance_reuser
         @logger = logger
         @instance_deleter = instance_deleter
         @max_instance_count = max_instance_count
         @instance_provider = instance_provider
         @mutex = Mutex.new
+        @dns_encoder = dns_encoder
       end
 
       def with_reused_vm(stemcell)
@@ -85,6 +87,7 @@ module Bosh::Director
                 instance: instance_memo.instance,
                 desired_instance: DeploymentPlan::DesiredInstance.new,
                 network_plans: [],
+                dns_encoder: @dns_encoder
               )
               destroy_instance(instance_plan)
             end
@@ -184,6 +187,7 @@ module Bosh::Director
           desired_instance: desired_instance,
           network_plans: [DeploymentPlan::NetworkPlanner::Plan.new(reservation: reservation)],
           tags: @deployment_plan.tags,
+          dns_encoder: @dns_encoder
         )
 
         compile_instance_group.add_instance_plans([instance_plan])

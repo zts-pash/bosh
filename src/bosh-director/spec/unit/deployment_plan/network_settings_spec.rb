@@ -2,6 +2,14 @@ require 'spec_helper'
 
 module Bosh::Director::DeploymentPlan
   describe NetworkSettings do
+    let(:dns_encoder) do
+      dns_encoder = Bosh::Director::DnsEncoder.new(
+          {},
+          az,
+          {'net_a' => {'ip' => '10.0.0.6', 'netmask' => '255.255.255.0', 'gateway' => '10.0.0.1'}},
+          {"uuid-1" => '1'}
+      )
+    end
     let(:network_settings) do
       NetworkSettings.new(
         'fake-job',
@@ -13,7 +21,7 @@ module Bosh::Director::DeploymentPlan
         3,
         'uuid-1',
         'bosh1.tld',
-        use_short_dns_addresses,
+        dns_encoder,
       )
     end
     let(:instance_group) do
@@ -115,13 +123,6 @@ module Bosh::Director::DeploymentPlan
               expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
             end
 
-            context 'when use_short_dns_addresses is true' do
-              let(:use_short_dns_addresses) { true }
-
-              it 'returns the short dns address' do
-                expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
-              end
-            end
           end
         end
 
@@ -152,12 +153,6 @@ module Bosh::Director::DeploymentPlan
             end
           end
 
-          context 'when use_short_dns_addresses is true' do
-            let(:use_short_dns_addresses) { true }
-            it 'returns the short dns address' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
-            end
-          end
         end
       end
 
@@ -206,7 +201,7 @@ module Bosh::Director::DeploymentPlan
             3,
             'uuid-1',
             'bosh1.tld',
-            false
+            dns_encoder
           )
         end
 

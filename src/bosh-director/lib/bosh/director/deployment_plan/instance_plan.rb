@@ -14,7 +14,7 @@ module Bosh
                        skip_drain: false,
                        recreate_deployment: false,
                        use_dns_addresses: false,
-                       use_short_dns_addresses: false,
+                       dns_encoder:,
                        logger: Config.logger,
                        tags: {})
           @existing_instance = existing_instance
@@ -24,7 +24,7 @@ module Bosh
           @skip_drain = skip_drain
           @recreate_deployment = recreate_deployment
           @use_dns_addresses = use_dns_addresses
-          @use_short_dns_addresses = use_short_dns_addresses
+          @dns_encoder = dns_encoder
           @logger = logger
           @tags = tags
           @powerdns_manager = PowerDnsManagerProvider.create
@@ -254,7 +254,7 @@ module Bosh
             @instance.index,
             @instance.uuid,
             root_domain,
-            @use_short_dns_addresses,
+            @dns_encoder,
           )
         end
 

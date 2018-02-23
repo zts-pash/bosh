@@ -41,7 +41,7 @@ module Bosh::Director
     let(:ip_provider) { instance_double(DeploymentPlan::IpProvider, reserve: nil, release: nil) }
     let(:instance_provider) { DeploymentPlan::InstanceProvider.new(plan, vm_creator, logger) }
     let(:compilation_instance_pool) do
-      DeploymentPlan::CompilationInstancePool.new(instance_reuser, instance_provider, logger, instance_deleter, 4)
+      DeploymentPlan::CompilationInstancePool.new(instance_reuser, instance_provider, logger, instance_deleter, 4, dns_encoder)
     end
     let(:thread_pool) do
       thread_pool = instance_double('Bosh::Director::ThreadPool')
@@ -832,7 +832,7 @@ module Bosh::Director
         prepare_samples
 
         allow(plan).to receive(:instance_groups).and_return([@j_dea])
-        expect(DeploymentPlan::CompilationInstancePool).to receive(:create).with(plan).and_return(compilation_instance_pool)
+        expect(DeploymentPlan::CompilationInstancePool).to receive(:create).with(plan, dns_encoder).and_return(compilation_instance_pool)
 
         expect(DeploymentPlan::Stages::PackageCompileStage).to receive(:new).with(
           plan.name,
@@ -843,7 +843,7 @@ module Bosh::Director
           nil,
         ).and_call_original
 
-        DeploymentPlan::Stages::PackageCompileStage.create(plan)
+        DeploymentPlan::Stages::PackageCompileStage.create(plan, dns_encoder)
       end
     end
   end

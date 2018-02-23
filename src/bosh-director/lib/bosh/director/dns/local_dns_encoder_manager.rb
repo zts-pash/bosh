@@ -13,6 +13,7 @@ module Bosh::Director
     end
 
     def self.create_dns_encoder(use_short_dns_names)
+      Bosh::Director::Config.logger.info("Creating DNS encoder")
       az_hash = {}
       network_name_hash = {}
 

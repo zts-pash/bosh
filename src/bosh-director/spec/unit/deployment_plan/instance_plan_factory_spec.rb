@@ -75,6 +75,7 @@ module Bosh::Director
         }
       end
       let(:options) { {} }
+      let(:dns_encoder) { Bosh::Director::DnsEncoder.new }
 
       subject(:instance_plan_factory) do
         InstancePlanFactory.new(
@@ -83,7 +84,8 @@ module Bosh::Director
           skip_drain,
           index_assigner,
           network_reservation_repository,
-          options)
+          options,
+          dns_encoder)
       end
 
       before {

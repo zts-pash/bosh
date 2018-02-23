@@ -54,7 +54,8 @@ module Bosh::Director
           instance_plan = DeploymentPlan::InstancePlan.new(
             instance: needed_instance,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: nil
+            existing_instance: nil,
+            dns_encoder: dns_encoder
           )
           allow(instance_plan).to receive(:changed?) { false }
           allow(instance_plan).to receive(:should_be_ignored?) { false }
@@ -100,7 +101,8 @@ module Bosh::Director
           instance_plan = DeploymentPlan::InstancePlan.new(
             instance: needed_instance,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: nil
+            existing_instance: nil,
+            dns_encoder: dns_encoder
           )
           allow(instance_plan).to receive(:changed?) { true }
           allow(instance_plan).to receive(:should_be_ignored?) { false }
@@ -144,7 +146,8 @@ module Bosh::Director
           instance_plan = DeploymentPlan::InstancePlan.new(
             instance: needed_instance,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: nil
+            existing_instance: nil,
+            dns_encoder: dns_encoder
           )
           allow(instance_plan).to receive(:changed?) { true }
           allow(instance_plan).to receive(:should_be_ignored?) { true }
@@ -174,7 +177,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: canary,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: nil
+            existing_instance: nil,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -185,7 +189,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: changed_instance,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: Models::Instance.make
+            existing_instance: Models::Instance.make,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -196,7 +201,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: unchanged_instance,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: Models::Instance.make
+            existing_instance: Models::Instance.make,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { false }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -267,7 +273,12 @@ module Bosh::Director
 
       context 'when the job has unneeded instances' do
         let(:instance) { instance_double('Bosh::Director::DeploymentPlan::Instance') }
-        let(:instance_plan) { DeploymentPlan::InstancePlan.new(existing_instance: nil, desired_instance: nil, instance: instance) }
+        let(:instance_plan) { DeploymentPlan::InstancePlan.new(
+            existing_instance: nil,
+            desired_instance: nil,
+            instance: instance,
+            dns_encoder: dns_encoder
+        ) }
         before { allow(job).to receive(:unneeded_instances).and_return([instance]) }
         before { allow(job).to receive(:obsolete_instance_plans).and_return([instance_plan]) }
 
@@ -302,7 +313,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: canary,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: nil
+            existing_instance: nil,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -313,7 +325,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: changed_instance_1,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: Models::Instance.make
+            existing_instance: Models::Instance.make,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -324,7 +337,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: changed_instance_2,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: Models::Instance.make
+            existing_instance: Models::Instance.make,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }
@@ -335,7 +349,8 @@ module Bosh::Director
           plan = DeploymentPlan::InstancePlan.new(
             instance: changed_instance_3,
             desired_instance: DeploymentPlan::DesiredInstance.new(nil, 'started', nil),
-            existing_instance: Models::Instance.make
+            existing_instance: Models::Instance.make,
+            dns_encoder: dns_encoder
           )
           allow(plan).to receive(:changed?) { true }
           allow(plan).to receive(:should_be_ignored?) { false }

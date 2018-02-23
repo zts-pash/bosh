@@ -23,6 +23,7 @@ module Bosh::Director
         desired_instance: DeploymentPlan::DesiredInstance.new,
         instance: instance,
         network_plans: [],
+        dns_encoder: DnsEncoder.new,
       })
     end
     let(:deployment) { instance_double(DeploymentPlan::Planner) }
