@@ -210,6 +210,7 @@ module Bosh::Director
                 allow(planner).to receive(:model).and_return(Bosh::Director::Models::Deployment.make(name: 'foo'))
                 allow(planner).to receive(:release)
                 allow(planner).to receive(:add_instance_group)
+                allow(planner).to receive(:use_short_dns_addresses?)
                 allow(job).to receive(:create_compilation_instance_group)
               }
 

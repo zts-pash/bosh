@@ -38,7 +38,8 @@ module Bosh::Director
           instance: nil,
           network_plans: [network_plan],
           desired_instance: nil,
-          skip_drain: true
+          skip_drain: true,
+          dns_encoder: DnsEncoder.new,
         )
       end
 

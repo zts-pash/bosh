@@ -65,7 +65,7 @@ module Bosh::Director
         before do
           allow(LocalDnsEncoderManager).to receive(:new_encoder_with_updated_index).with(planner).and_return(dns_encoder)
           allow(job).to receive(:with_deployment_lock).and_yield.ordered
-          allow(DeploymentPlan::Stages::PackageCompileStage).to receive(:create).with(planner).and_return(compile_stage)
+          allow(DeploymentPlan::Stages::PackageCompileStage).to receive(:create).with(planner, dns_encoder).and_return(compile_stage)
           allow(DeploymentPlan::Stages::UpdateStage).to receive(:new).and_return(update_stage)
           allow(DeploymentPlan::Notifier).to receive(:new).and_return(notifier)
           allow(ConfigServer::VariablesInterpolator).to receive(:new).and_return(variables_interpolator)

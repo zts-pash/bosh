@@ -10,7 +10,6 @@ module Bosh
           @index_assigner = index_assigner
           @network_reservation_repository = network_reservation_repository
           @use_dns_addresses = options.fetch('use_dns_addresses', false)
-          @use_short_dns_addresses = options.fetch('use_short_dns_addresses', false)
           @randomize_az_placement = options.fetch('randomize_az_placement', false)
           @tags = options.fetch('tags', {})
           @dns_encoder = dns_encoder

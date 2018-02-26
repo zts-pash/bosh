@@ -14,7 +14,7 @@ module Bosh::Director
           deployment: deployment_model,
           job: 'foobar',
           index: 0,
-          spec: spec
+          spec: spec,
         )
         Models::Vm.make(cid: 'vm-cid', instance: instance_model, active: true)
         instance_model
@@ -23,31 +23,30 @@ module Bosh::Director
         {
           'vm_type' => {
             'name' => 'vm-type',
-            'cloud_properties' => {'foo' => 'bar'},
+            'cloud_properties' => { 'foo' => 'bar' },
           },
           'stemcell' => {
             'name' => 'stemcell-name',
-            'version' => '3.0.2'
+            'version' => '3.0.2',
           },
           'env' => {
-            'key1' => 'value1'
+            'key1' => 'value1',
           },
           'networks' => {
             'ip' => '192.168.1.1',
-          }
+          },
         }
       end
-      let(:deployment_model) { Models::Deployment.make(manifest: YAML.dump(Bosh::Spec::Deployments.minimal_manifest), :name => 'name-7') }
+      let(:deployment_model) { Models::Deployment.make(manifest: YAML.dump(Bosh::Spec::Deployments.minimal_manifest), name: 'name-7') }
       let(:range) { NetAddr::CIDR.create('192.168.1.1/24') }
       let(:manual_network_subnet) { ManualNetworkSubnet.new('name-7', range, nil, nil, nil, nil, nil, [], []) }
       let(:network) { BD::DeploymentPlan::ManualNetwork.new('name-7', [manual_network_subnet], logger) }
       let(:ip_repo) { BD::DeploymentPlan::InMemoryIpRepo.new(logger) }
       let(:deployment_plan) do
         instance_double(Planner,
-          network: network,
-          ip_provider: BD::DeploymentPlan::IpProvider.new(ip_repo, {'name-7' => network}, logger),
-          model: deployment_model
-        )
+                        network: network,
+                        ip_provider: BD::DeploymentPlan::IpProvider.new(ip_repo, { 'name-7' => network }, logger),
+                        model: deployment_model)
       end
       let(:desired_instance) do
         instance_double('Bosh::Director::DeploymentPlan::DesiredInstance')
@@ -63,15 +62,15 @@ module Bosh::Director
       let(:states_by_existing_instance) do
         {
           existing_instance_model =>
+          {
+            'networks' =>
             {
-              'networks' =>
-                {
-                  'name-7' => {
-                    'ip' => '192.168.1.1',
-                    'type' => 'dynamic'
-                  }
-                }
-            }
+              'name-7' => {
+                'ip' => '192.168.1.1',
+                'type' => 'dynamic',
+              },
+            },
+          },
         }
       end
       let(:options) { {} }
@@ -85,10 +84,11 @@ module Bosh::Director
           index_assigner,
           network_reservation_repository,
           options,
-          dns_encoder)
+          dns_encoder,
+        )
       end
 
-      before {
+      before do
         BD::Models::Stemcell.make(name: 'stemcell-name', version: '3.0.2', cid: 'sc-302')
         allow(desired_instance).to receive(:instance_group).and_return(instance_group)
         allow(desired_instance).to receive(:index).and_return(1)
@@ -99,7 +99,7 @@ module Bosh::Director
         allow(instance_group).to receive(:name).and_return('group-name')
         allow(index_assigner).to receive(:assign_index)
         allow(plan_instance).to receive(:update_description)
-      }
+      end
 
       describe '#obsolete_instance_plan' do
         it 'returns an instance plan with a nil desired instance' do
@@ -124,14 +124,14 @@ module Bosh::Director
               job: 'foobar',
               index: 0,
               spec: spec,
-              variable_set: variable_set
+              variable_set: variable_set,
             )
             Models::Vm.make(cid: 'vm-cid', instance: instance_model, active: true)
             instance_model
           end
 
           context 'when passed as TRUE in the options' do
-            let(:options) { {'use_dns_addresses' => true} }
+            let(:options) { { 'use_dns_addresses' => true } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -142,30 +142,27 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 use_dns_addresses: true,
-                use_short_dns_addresses: false
+                dns_encoder: anything,
               )
               instance_plan_factory.obsolete_instance_plan(existing_instance_model)
             end
 
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) {{ 'use_short_dns_addresses'=> true, 'use_dns_addresses' => true }}
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
+            it 'provides the instance plan with the correct dns_encoder' do
+              expect(InstancePlan).to receive(:new).with(
+                desired_instance: anything,
+                existing_instance: anything,
+                instance: anything,
+                skip_drain: anything,
+                recreate_deployment: anything,
+                use_dns_addresses: true,
+                dns_encoder: dns_encoder,
+              )
+              instance_plan_factory.obsolete_instance_plan(existing_instance_model)
             end
           end
 
           context 'when passed as FALSE in the options' do
-            let(:options) { {'use_dns_addresses' => false} }
+            let(:options) { { 'use_dns_addresses' => false } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -175,8 +172,8 @@ module Bosh::Director
                 instance: anything,
                 skip_drain: anything,
                 recreate_deployment: anything,
-                use_short_dns_addresses: false,
-                use_dns_addresses: false
+                use_dns_addresses: false,
+                dns_encoder: anything,
               )
               instance_plan_factory.obsolete_instance_plan(existing_instance_model)
             end
@@ -190,7 +187,7 @@ module Bosh::Director
               job: 'foobar',
               index: 0,
               spec: spec,
-              variable_set: variable_set
+              variable_set: variable_set,
             )
             Models::Vm.make(cid: 'vm-cid', instance: instance_model, active: true)
             instance_model
@@ -199,7 +196,7 @@ module Bosh::Director
           let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
           context 'when passed as TRUE in the options' do
-            let(:options) { {'randomize_az_placement' => true} }
+            let(:options) { { 'randomize_az_placement' => true } }
 
             it 'knows whether to randomize az placement' do
               expect(instance_plan_factory.randomize_az_placement?).to be(true)
@@ -207,7 +204,7 @@ module Bosh::Director
           end
 
           context 'when passed as FALSE in the options' do
-            let(:options) { {'randomize_az_placement' => false} }
+            let(:options) { { 'randomize_az_placement' => false } }
 
             it 'knows whether to randomize az placement' do
               expect(instance_plan_factory.randomize_az_placement?).to be(false)
@@ -217,8 +214,8 @@ module Bosh::Director
       end
 
       describe '#desired_existing_instance_plan' do
-        let(:tags) { {'key1' => 'value1'} }
-        let(:options) { {'tags' => tags} }
+        let(:tags) { { 'key1' => 'value1' } }
+        let(:options) { { 'tags' => tags } }
 
         it 'passes tags to instance plan creation' do
           expect(InstancePlan).to receive(:new).with(
@@ -228,8 +225,8 @@ module Bosh::Director
             skip_drain: anything,
             recreate_deployment: anything,
             use_dns_addresses: anything,
-            use_short_dns_addresses: anything,
-            tags: tags
+            dns_encoder: anything,
+            tags: tags,
           )
 
           instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
@@ -242,14 +239,14 @@ module Bosh::Director
               job: 'foobar',
               index: 0,
               spec: spec,
-              variable_set: variable_set
+              variable_set: variable_set,
             )
             Models::Vm.make(cid: 'vm-cid', instance: instance_model, active: true)
             instance_model
           end
 
           context 'when passed as TRUE in the options' do
-            let(:options) { {'use_dns_addresses' => true} }
+            let(:options) { { 'use_dns_addresses' => true } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -261,30 +258,27 @@ module Bosh::Director
                 recreate_deployment: anything,
                 tags: anything,
                 use_dns_addresses: true,
-                use_short_dns_addresses: false
+                dns_encoder: anything,
               )
               instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
             end
 
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) {{ 'use_short_dns_addresses'=> true, 'use_dns_addresses' => true }}
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
+            it 'provides the instance_plan with the correct dns_encoder' do
+              expect(InstancePlan).to receive(:new).with(
+                desired_instance: anything,
+                existing_instance: anything,
+                instance: anything,
+                skip_drain: anything,
+                recreate_deployment: anything,
+                use_dns_addresses: true,
+                dns_encoder: dns_encoder,
+              )
+              instance_plan_factory.obsolete_instance_plan(existing_instance_model)
             end
           end
 
           context 'when passed as FALSE in the options' do
-            let(:options) { {'use_dns_addresses' => false} }
+            let(:options) { { 'use_dns_addresses' => false } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -295,8 +289,8 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
-                use_dns_addresses: false
+                use_dns_addresses: false,
+                dns_encoder: anything,
               )
               instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
             end
@@ -305,8 +299,8 @@ module Bosh::Director
       end
 
       describe '#desired_new_instance_plan' do
-        let(:tags) { {'key1' => 'value1'} }
-        let(:options) { {'tags' => tags} }
+        let(:tags) { { 'key1' => 'value1' } }
+        let(:options) { { 'tags' => tags } }
 
         it 'passes tags to instance plan creation' do
           expect(InstancePlan).to receive(:new).with(
@@ -315,9 +309,9 @@ module Bosh::Director
             instance: anything,
             skip_drain: anything,
             recreate_deployment: anything,
-            use_short_dns_addresses: anything,
             use_dns_addresses: anything,
-            tags: tags
+            tags: tags,
+            dns_encoder: anything,
           )
 
           instance_plan_factory.desired_new_instance_plan(desired_instance)
@@ -330,14 +324,14 @@ module Bosh::Director
               job: 'foobar',
               index: 0,
               spec: spec,
-              variable_set: variable_set
+              variable_set: variable_set,
             )
             Models::Vm.make(cid: 'vm-cid', instance: instance_model, active: true)
             instance_model
           end
 
           context 'when passed as TRUE in the options' do
-            let(:options) { {'use_dns_addresses' => true} }
+            let(:options) { { 'use_dns_addresses' => true } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -348,31 +342,28 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
-                use_dns_addresses: true
+                use_dns_addresses: true,
+                dns_encoder: anything,
               )
               instance_plan_factory.desired_new_instance_plan(desired_instance)
             end
 
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) {{ 'use_short_dns_addresses'=> true, 'use_dns_addresses' => true }}
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
+            it 'provides the instance_plan with the correct dns_encoder' do
+              expect(InstancePlan).to receive(:new).with(
+                desired_instance: anything,
+                existing_instance: anything,
+                instance: anything,
+                skip_drain: anything,
+                recreate_deployment: anything,
+                use_dns_addresses: true,
+                dns_encoder: dns_encoder,
+              )
+              instance_plan_factory.obsolete_instance_plan(existing_instance_model)
             end
           end
 
           context 'when passed as FALSE in the options' do
-            let(:options) { {'use_dns_addresses' => false} }
+            let(:options) { { 'use_dns_addresses' => false } }
             let(:variable_set) { Models::VariableSet.make(deployment: deployment_model) }
 
             it 'provides the instance_plan with the correct use_dns_addresses' do
@@ -383,8 +374,8 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
-                use_dns_addresses: false
+                dns_encoder: anything,
+                use_dns_addresses: false,
               )
               instance_plan_factory.desired_new_instance_plan(desired_instance)
             end

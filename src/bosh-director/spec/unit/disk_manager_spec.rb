@@ -12,7 +12,8 @@ module Bosh::Director
                                        desired_instance: DeploymentPlan::DesiredInstance.new(instance_group),
                                        instance: instance,
                                        network_plans: [],
-                                       tags: tags)
+                                       tags: tags,
+                                       dns_encoder: DnsEncoder.new)
     end
     let(:tags) { { 'tags' => { 'mytag' => 'myvalue' } } }
 
@@ -274,7 +275,8 @@ module Bosh::Director
             DeploymentPlan::InstancePlan.new(existing_instance: instance_model,
                                              desired_instance: DeploymentPlan::DesiredInstance.new(instance_group),
                                              instance: instance,
-                                             network_plans: [])
+                                             network_plans: [],
+                                             dns_encoder: DnsEncoder.new)
           end
 
           it 'raises' do

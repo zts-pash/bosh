@@ -30,8 +30,9 @@ module Bosh::Director
     let(:deployment_model) { instance_double(Bosh::Director::Models::Deployment, name: 'fake-deployment') }
     let(:current_job_state) {'running'}
     let(:desired_instance) { DeploymentPlan::DesiredInstance.new(job) }
+    let(:dns_encoder) { instance_double(Bosh::Director::DnsEncoder) }
     let(:instance_plan) do
-      DeploymentPlan::InstancePlan.new(existing_instance: instance_model, instance: instance, desired_instance: desired_instance, skip_drain: skip_drain)
+      DeploymentPlan::InstancePlan.new(existing_instance: instance_model, instance: instance, desired_instance: desired_instance, skip_drain: skip_drain, dns_encoder: dns_encoder)
     end
     let(:spec) do
       {

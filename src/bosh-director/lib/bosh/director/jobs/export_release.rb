@@ -58,13 +58,14 @@ module Bosh::Director
 
         export_release_job = create_compilation_instance_group(release_version_model, release, deployment_plan_stemcell)
         planner.add_instance_group(export_release_job)
-        assembler = DeploymentPlan::Assembler.create(planner)
+        dns_encoder = LocalDnsEncoderManager.create_dns_encoder(planner.use_short_dns_addresses?)
+        assembler = DeploymentPlan::Assembler.create(planner, dns_encoder)
         assembler.bind_models({:should_bind_links => false, :should_bind_properties => false})
 
         lock_timeout = 15 * 60 # 15 minutes
 
         with_deployment_lock(@deployment_name, :timeout => lock_timeout) do
-          compile_step(planner).perform
+          compile_step(planner, dns_encoder).perform
 
           tarball_state = create_tarball(release_version_model, deployment_plan_stemcell)
           task_result.write(tarball_state.to_json + "\n")
@@ -74,8 +75,8 @@ module Bosh::Director
 
       private
 
-      def compile_step(deployment_plan)
-        DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan)
+      def compile_step(deployment_plan, dns_encoder)
+        DeploymentPlan::Stages::PackageCompileStage.create(deployment_plan, dns_encoder)
       end
 
       def deployment_manifest_has_release?(manifest)

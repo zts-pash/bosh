@@ -89,7 +89,7 @@ module Bosh::Director
           allow(job).to receive(:task_id).and_return(task.id)
           allow(Errand::Runner).to receive(:new).and_return(runner)
 
-          allow(DeploymentPlan::Assembler).to receive(:create).with(planner).and_return(assembler)
+          allow(DeploymentPlan::Assembler).to receive(:create).with(planner, an_instance_of(DnsEncoder)).and_return(assembler)
         end
 
         let(:planner) do
@@ -192,7 +192,7 @@ module Bosh::Director
 
           before do
             allow(template_blob_cache).to receive(:clean_cache!)
-            allow(DeploymentPlan::Stages::PackageCompileStage).to receive(:create).with(planner).and_return(compile_packages_step)
+            allow(DeploymentPlan::Stages::PackageCompileStage).to receive(:create).with(planner, an_instance_of(DnsEncoder)).and_return(compile_packages_step)
           end
 
           context 'when instance group representing an errand exists' do

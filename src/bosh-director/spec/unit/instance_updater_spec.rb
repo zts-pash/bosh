@@ -62,6 +62,7 @@ module Bosh::Director
         instance: instance,
         desired_instance: desired_instance,
         tags: tags,
+        dns_encoder: dns_encoder
       )
       allow(instance_plan).to receive(:spec).and_return(DeploymentPlan::InstanceSpec.create_empty)
       allow(instance_plan).to receive(:needs_disk?).and_return(false)

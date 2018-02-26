@@ -14,6 +14,7 @@ module Bosh::Director
         existing_instance: instance_model,
         desired_instance: DeploymentPlan::DesiredInstance.new(instance_group),
         instance: instance,
+        dns_encoder: DnsEncoder.new
       )
     end
 
