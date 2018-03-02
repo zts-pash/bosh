@@ -7,7 +7,7 @@ module Bosh::Director
 
           new(
             InstanceReuser.new,
-            make_instance_provider(logger, deployment_plan),
+            make_instance_provider(logger, deployment_plan, dns_encoder),
             logger,
             make_instance_deleter(logger, deployment_plan),
             deployment_plan.compilation.workers,
@@ -25,7 +25,7 @@ module Bosh::Director
           )
         end
 
-        def make_instance_provider(logger, deployment_plan)
+        def make_instance_provider(logger, deployment_plan, dns_encoder)
           InstanceProvider.new(
             deployment_plan,
             Bosh::Director::VmCreator.new(
@@ -35,6 +35,7 @@ module Bosh::Director
               AgentBroadcaster.new,
             ),
             logger,
+            dns_encoder,
           )
         end
       end
@@ -130,10 +131,11 @@ module Bosh::Director
     end
 
     class InstanceProvider
-      def initialize(deployment_plan, vm_creator, logger)
+      def initialize(deployment_plan, vm_creator, logger, dns_encoder)
         @deployment_plan = deployment_plan
         @vm_creator = vm_creator
         @logger = logger
+        @dns_encoder = dns_encoder
       end
 
       def create_instance_plan(stemcell)
