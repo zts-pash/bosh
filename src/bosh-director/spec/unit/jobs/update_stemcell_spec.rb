@@ -257,6 +257,62 @@ describe Bosh::Director::Jobs::UpdateStemcell do
         end.to raise_exception(Bosh::Director::StemcellInvalidArchive)
       end
 
+      context 'when there is a migrated from cpi' do
+        context 'when the migrated from cpi has no stemcell' do
+          let(:cloud_factory) { instance_double(BD::CloudFactory) }
+          let(:cloud1) { cloud }
+
+          before do
+            allow(BD::CloudFactory).to receive(:create).and_return(cloud_factory)
+          end
+
+          it '' do
+            expect(cloud1).to receive(:create_stemcell).with(anything, 'ram' => '2gb').and_raise('I am flaky')
+            expect(cloud1).to receive(:info).and_return('stemcell_formats' => ['dummy'])
+            expect(cloud_factory).to receive(:get).with('cloud1').and_return(cloud1)
+            expect(cloud_factory).to receive(:all_names).twice.and_return(['cloud1'])
+
+            update_stemcell_job = Bosh::Director::Jobs::UpdateStemcell.new(@stemcell_file.path)
+            expect { update_stemcell_job.perform }.to raise_error 'I am flaky'
+
+            expect(BD::Models::StemcellUpload.all.count).to eq(0)
+          end
+        end
+
+        context 'when the migrated from cpi already has the same stemcell' do
+          let(:cloud_factory) { instance_double(BD::CloudFactory) }
+          let(:cloud1) { cloud }
+          let(:cloud2) { cloud }
+
+          before do
+            BD::Models::StemcellUpload.make(name: 'jeos', version: '5', cpi: 'cloud1')
+            allow(BD::CloudFactory).to receive(:create).and_return(cloud_factory)
+          end
+
+          it 'does not upload another stemcell' do
+            expect(cloud_factory).to receive(:all_names).twice.and_return(%w[cloud1 cloud2])
+            expect(cloud_factory).to receive(:get).with('cloud1').and_return(cloud1)
+            expect(cloud_factory).to receive(:get).with('cloud2').and_return(cloud2)
+
+            expect(cloud1).to receive(:info).and_return('stemcell_formats' => ['dummy'])
+            expect(cloud2).to receive(:info).and_return('stemcell_formats' => ['dummy1'])
+
+            expect(BD::Models::Stemcell.all.count).to eq(1)
+            expect(BD::Models::StemcellUpload.all.count).to eq(1)
+
+            update_stemcell_job = Bosh::Director::Jobs::UpdateStemcell.new(@stemcell_file.path)
+            update_stemcell_job.perform
+
+            expect(BD::Models::Stemcell.all.map do |s|
+              { name: s.name, version: s.version, cpi: s.cpi }
+            end).to contain_exactly( name: 'jeos', version: '5', cpi: 'cloud1' )
+            expect(BD::Models::StemcellUpload.all.map do |s|
+              { name: s.name, version: s.version, cpi: s.cpi }
+            end).to contain_exactly( name: 'jeos', version: '5', cpi: 'cloud1')
+          end
+        end
+      end
+
       context 'when having multiple cpis' do
         let(:cloud_factory) { instance_double(BD::CloudFactory) }
         let(:cloud1) { cloud }
