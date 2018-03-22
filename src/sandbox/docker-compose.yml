@@ -1,0 +1,83 @@
+version: '3'
+services:
+  director_nginx:
+    image: "dimka2014/nginx-upload-with-progress-modules"
+    expose:
+    - "61004"
+    ports:
+    - "61004:61004"
+    volumes:
+    - ../sandbox-config/director_nginx.conf:/etc/nginx/nginx.conf:ro
+    - ../bosh-dev/assets/sandbox/ca/certs:/director-nginx/certs:ro
+    depends_on:
+    - director
+
+  director:
+    build: ..
+    expose:
+    - "61005"
+    ports:
+    - "61005:61005"
+    volumes:
+    - ../sandbox-config/director_test.yml:/config/director_test.yml:ro
+    - ../bosh-dev/assets/sandbox/nats_server/certs:/nats_server/certs:ro
+    depends_on:
+    - db_connection_proxy
+    - gnatsd
+    command: ["/bosh/sandbox/run-director.sh"]
+
+  db_connection_proxy:
+    image: "nginx"
+    volumes:
+    - ../sandbox-config/nginx_tcp_proxy.conf:/etc/nginx/nginx.conf:ro
+    expose:
+    - "61006"
+    ports:
+    - "61006:61006"
+    depends_on:
+    - postgres
+
+  postgres:
+    image: postgres:9.5
+    container_name: db_postgres
+    restart: always
+    expose:
+    - "5432"
+    environment:
+    - POSTGRES_USER=postgres
+    - POSTGRES_DB=bosh
+
+  gnatsd:
+    build: gnatsd/.
+    volumes:
+    - ../sandbox-config:/config:ro
+    - ../bosh-dev/assets/sandbox/nats_server/certs:/certs:ro
+    expose:
+    - "61000"
+    ports:
+    - "61000:61000"
+
+  workers:
+    deploy:
+      mode: replicated
+      replicas: 3
+    build: ..
+    volumes:
+    - ../sandbox-config/director_test.yml:/config/director_test.yml:ro
+    - ../bosh-dev/assets/sandbox/nats_server/certs:/nats_server/certs:ro
+    depends_on:
+    - db_connection_proxy
+    - gnatsd
+    command: ["/bosh/sandbox/run-worker.sh"]
+
+    # mysql:
+    #     image: mysql
+    #     container_name: mysql
+    #     restart: always
+    #     ports:
+    #         - 3306:3306
+    #     environment:
+    #         - MYSQL_ROOT_PASSWORD=password
+    #         - MYSQL_DB=bosh
+    #     volumes:
+    #         - /tmp/mysql:/var/lib/mysql

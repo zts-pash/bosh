@@ -1,0 +1,130 @@
+---
+name: TestDirector
+uuid: deadbeef
+runtime:
+  ip: 127.1.127.1
+  instance: some-name/some-id
+
+port: 61005
+
+mbus: nats://gnatsd:61000
+
+logging:
+  level: DEBUG
+
+dir: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-27763/sandbox/boshdir
+
+scheduled_jobs:
+  - command: SnapshotDeployments
+    schedule: '*/2 * * * * *'
+  - command: ScheduledBackup
+    schedule: '*/1 * * * * *'
+
+db: &bosh_db
+  adapter: postgres
+  database: bosh
+  # Settings are set to defaults since DbBackup
+  # currently does not support export without them
+  host: db_connection_proxy
+  port: 61006
+  user: postgres
+  password:
+
+
+  # Failure to set `sslmode` will produce following error
+  # 'PG::Error: SSL error: decryption failed or bad record mac:'
+  sslmode: "disable"
+
+
+  connection_options:
+    max_connections: 32
+    pool_timeout: 10
+    reconnect: false
+
+
+dns:
+  db: *bosh_db
+
+
+trusted_certs:
+
+local_dns:
+  enabled:
+  include_index:
+  use_dns_addresses:
+
+verify_multidigest_path: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/verify-multidigest/verify-multidigest
+
+version: '0.0.0'
+
+blobstore: &director_blobstore
+  provider: local
+  options:
+    blobstore_path: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-27763/sandbox/bosh_test_blobstore
+
+backup_destination:
+  provider: local
+  options:
+    blobstore_path: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-27763/sandbox/backup_destination
+
+compiled_package_cache:
+  <<: *director_blobstore
+
+scan_and_fix:
+  auto_fix_stateful_nodes: false
+
+snapshots:
+  enabled: true
+
+flush_arp: true
+
+cloud:
+  provider:
+    name: test-cpi
+    path: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-27763/sandbox/cpi
+  properties:
+    dir: /Users/pivotal/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-27763/sandbox/bosh_cloud_test
+    agent:
+      blobstore:
+        <<: *director_blobstore
+
+user_management:
+  provider: local
+
+  local:
+
+    users:
+    - {name: test, password: test}
+    - {name: hm, password: pass}
+
+
+
+enable_post_deploy: false
+enable_nats_delivered_templates: false
+enable_cpi_resize_disk: false
+default_update_strategy:
+
+
+config_server:
+  enabled: false
+
+
+generate_vm_passwords: false
+
+remove_dev_tools: false
+
+record_events: true
+
+director_ips: []
+
+nats:
+  server_ca_path: /nats_server/certs/rootCA.pem
+  client_certificate_path: /nats_server/certs/director/certificate.pem
+  client_private_key_path: /nats_server/certs/director/private_key
+  client_ca_certificate_path: /nats_server/certs/rootCA.pem
+  client_ca_private_key_path: /nats_server/certs/rootCA.key
+
+agent:
+  env:
+    bosh:
+      dummy_agent_key_merged: "This key must be sent to agent"
