@@ -9,6 +9,7 @@ services:
     volumes:
     - ../sandbox-config/director_nginx.conf:/etc/nginx/nginx.conf:ro
     - ../bosh-dev/assets/sandbox/ca/certs:/director-nginx/certs:ro
+    - ./director-tmp:/director-tmp
     depends_on:
     - director
 
@@ -21,6 +22,7 @@ services:
     volumes:
     - ../sandbox-config/director_test.yml:/config/director_test.yml:ro
     - ../bosh-dev/assets/sandbox/nats_server/certs:/nats_server/certs:ro
+    - ./director-tmp:/director-tmp
     depends_on:
     - db_connection_proxy
     - gnatsd
@@ -65,6 +67,7 @@ services:
     volumes:
     - ../sandbox-config/director_test.yml:/config/director_test.yml:ro
     - ../bosh-dev/assets/sandbox/nats_server/certs:/nats_server/certs:ro
+    - ./director-tmp:/director-tmp
     depends_on:
     - db_connection_proxy
     - gnatsd
