@@ -137,14 +137,14 @@ module Bosh::Dev::Sandbox
       connection_config
     end
 
-    private
-
     def migrate_database(force_migration)
       if !@database_migrated || force_migration
         @database_migrator.migrate
         @database_migrated = true
       end
     end
+
+    private
 
     def delayed_job_ready?
       if ENV['TMUX_DEBUG']

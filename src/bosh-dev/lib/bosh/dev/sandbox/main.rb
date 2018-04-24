@@ -38,6 +38,8 @@ module Bosh::Dev::Sandbox
 
     UPGRADE_SPEC_ASSETS_DIR = File.expand_path('spec/assets/upgrade', REPO_ROOT)
 
+    DIRECTOR_PATH = File.expand_path('bosh-director', REPO_ROOT)
+
     attr_reader :name
     attr_reader :health_monitor_process
     attr_reader :scheduler_process
@@ -442,7 +444,10 @@ module Bosh::Dev::Sandbox
         @database.drop_db
         @database.create_db
       else
-        @database.truncate_db
+        @database.drop_db
+        @database.create_db
+        @director_service.migrate_database(true)
+        # @database.truncate_db
       end
 
       FileUtils.rm_rf(blobstore_storage_dir)
