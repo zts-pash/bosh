@@ -26,6 +26,14 @@ describe 'registry.yml.erb' do
             'connection_options' => {
               'max_connections' => 32
             },
+            'tls' => {
+              'enabled' => false,
+              'cert' => {
+                'ca' => '/var/vcap/jobs/registry/config/db/ca.pem',
+                'certificate' => '/var/vcap/jobs/registry/config/db/client_certificate.pem',
+                'private_key' => '/var/vcap/jobs/registry/config/db/client_private_key.key'
+              }
+            }
           },
         }
       }
@@ -41,7 +49,7 @@ describe 'registry.yml.erb' do
 
   shared_examples :database_options do
     it 'renders database properties' do
-      expect(parsed_yaml['db']).to eq({
+      expect(parsed_yaml['db']).to eq(
         'adapter' => 'mysql2',
         'user' => 'ub45391e00',
         'password' => 'p4cd567d84d0e012e9258d2da30',
@@ -50,8 +58,48 @@ describe 'registry.yml.erb' do
         'database' => 'bosh',
         'connection_options' => {
           'max_connections' => 32
+        },
+        'tls' => {
+          'enabled' => false,
+          'cert' => {
+            'ca' => '/var/vcap/jobs/registry/config/db/ca.pem',
+            'certificate' => '/var/vcap/jobs/registry/config/db/client_certificate.pem',
+            'private_key' => '/var/vcap/jobs/registry/config/db/client_private_key.key'
+          }
         }
-      })
+      )
+    end
+  end
+
+  context 'db tls' do
+    context 'when registry.db.tls.enabled is true' do
+      before do
+        deployment_manifest_fragment['properties']['registry']['db']['tls']['enabled'] = true
+      end
+
+      it 'configures enabled TLS for database property' do
+        expect(parsed_yaml['db']['tls']['enabled']).to be_truthy
+      end
+    end
+
+    context 'when registry.db.tls.enabled is false' do
+      before do
+        deployment_manifest_fragment['properties']['registry']['db']['tls']['enabled'] = false
+      end
+
+      it 'configures disables TLS for database property' do
+        expect(parsed_yaml['db']['tls']['enabled']).to be_falsey
+      end
+    end
+
+    context 'when registry.db.tls.enabled is not defined' do
+      before do
+        deployment_manifest_fragment['properties']['registry']['db']['tls'].delete('enabled')
+      end
+
+      it 'disables TLS by default' do
+        expect(parsed_yaml['db']['tls']['enabled']).to be_falsey
+      end
     end
   end
 

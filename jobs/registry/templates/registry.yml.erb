@@ -15,6 +15,14 @@
       'port' =>  p('registry.db.port'),
       'database' =>  p('registry.db.database'),
       'connection_options' => p('registry.db.connection_options'),
+      'tls' => {
+        'enabled' => p('registry.db.tls.enabled', false),
+        'cert' => {
+          'ca' => '/var/vcap/jobs/registry/config/db/ca.pem',
+          'certificate' => '/var/vcap/jobs/registry/config/db/client_certificate.pem',
+          'private_key' => '/var/vcap/jobs/registry/config/db/client_private_key.key',
+        },
+      }
     }
   }
 

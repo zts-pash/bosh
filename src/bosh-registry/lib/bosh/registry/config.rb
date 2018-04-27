@@ -37,11 +37,45 @@ module Bosh::Registry
     end
 
     def connect_db(db_config)
-      connection_options = db_config.delete('connection_options') {{}}
-      db_config.delete_if { |_, v| v.to_s.empty? }
-      db_config = db_config.merge(connection_options)
+      connection_config = db_config.dup
+      custom_connection_options = db_config.delete('connection_options') { {} }
 
-      db = Sequel.connect(db_config)
+      tls_options = connection_config.delete('tls') { {} }
+
+      if tls_options.fetch('enabled', false)
+        certificate_paths = tls_options.fetch('cert')
+        db_ca_path = certificate_paths.fetch('ca')
+        db_client_cert_path = certificate_paths.fetch('certificate')
+        db_client_private_key_path = certificate_paths.fetch('private_key')
+
+        db_ca_provided = tls_options.fetch('bosh_internal').fetch('ca_provided')
+        mutual_tls_enabled = tls_options.fetch('bosh_internal').fetch('mutual_tls_enabled')
+
+        case connection_config['adapter']
+          when 'mysql2'
+            # http://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html#label-mysql+
+            connection_config['ssl_mode'] = 'verify_identity'
+            connection_config['sslverify'] = true
+            connection_config['sslca'] = db_ca_path if db_ca_provided
+            connection_config['sslcert'] = db_client_cert_path if mutual_tls_enabled
+            connection_config['sslkey'] = db_client_private_key_path if mutual_tls_enabled
+          when 'postgres'
+            # http://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html#label-postgres
+            connection_config['sslmode'] = 'verify-full'
+            connection_config['sslrootcert'] = db_ca_path if db_ca_provided
+
+            postgres_driver_options = {
+              'sslcert' => db_client_cert_path,
+              'sslkey' => db_client_private_key_path,
+            }
+            connection_config['driver_options'] = postgres_driver_options if mutual_tls_enabled
+        end
+      end
+
+      connection_config.delete_if { |_, v| v.to_s.empty? }
+      connection_config = connection_config.merge(custom_connection_options)
+
+      db = Sequel.connect(connection_config)
       if logger
         db.logger = @logger
         db.sql_log_level = :debug
