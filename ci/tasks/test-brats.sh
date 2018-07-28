@@ -2,6 +2,8 @@
 
 set -eu
 
+source bosh-src/ci/tasks/utils.sh
+
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 src_dir="${script_dir}/../../.."
 
@@ -39,31 +41,11 @@ bosh -n update-cloud-config \
 
 bosh -n upload-stemcell $CANDIDATE_STEMCELL_TARBALL_PATH
 
-apt-get update
-apt-get install -y mysql-client postgresql-client
-
 if [ -d database-metadata ]; then
-  RDS_MYSQL_EXTERNAL_DB_HOST="$(jq -r .aws_mysql_endpoint database-metadata/metadata | cut -d':' -f1)"
-  RDS_POSTGRES_EXTERNAL_DB_HOST="$(jq -r .aws_postgres_endpoint database-metadata/metadata | cut -d':' -f1)"
-  GCP_MYSQL_EXTERNAL_DB_HOST="$(jq -r .gcp_mysql_endpoint database-metadata/metadata)"
-  GCP_POSTGRES_EXTERNAL_DB_HOST="$(jq -r .gcp_postgres_endpoint database-metadata/metadata)"
-  GCP_MYSQL_EXTERNAL_DB_CA="$(jq -r .mysql_ca_cert gcp-ssl-config/gcp_mysql.yml)"
-  GCP_MYSQL_EXTERNAL_DB_CLIENT_CERTIFICATE="$(jq -r .mysql_client_cert gcp-ssl-config/gcp_mysql.yml)"
-  GCP_MYSQL_EXTERNAL_DB_CLIENT_PRIVATE_KEY="$(jq -r .mysql_client_key gcp-ssl-config/gcp_mysql.yml)"
-  GCP_POSTGRES_EXTERNAL_DB_CA="$(jq -r .postgres_ca_cert gcp-ssl-config/gcp_postgres.yml)"
-  GCP_POSTGRES_EXTERNAL_DB_CLIENT_CERTIFICATE="$(jq -r .postgres_client_cert gcp-ssl-config/gcp_postgres.yml)"
-  GCP_POSTGRES_EXTERNAL_DB_CLIENT_PRIVATE_KEY="$(jq -r .postgres_client_key gcp-ssl-config/gcp_postgres.yml)"
-
-  export RDS_MYSQL_EXTERNAL_DB_HOST
-  export RDS_POSTGRES_EXTERNAL_DB_HOST
-  export GCP_MYSQL_EXTERNAL_DB_HOST
-  export GCP_POSTGRES_EXTERNAL_DB_HOST
-  export GCP_MYSQL_EXTERNAL_DB_CA
-  export GCP_MYSQL_EXTERNAL_DB_CLIENT_CERTIFICATE
-  export GCP_MYSQL_EXTERNAL_DB_CLIENT_PRIVATE_KEY
-  export GCP_POSTGRES_EXTERNAL_DB_CA
-  export GCP_POSTGRES_EXTERNAL_DB_CLIENT_CERTIFICATE
-  export GCP_POSTGRES_EXTERNAL_DB_CLIENT_PRIVATE_KEY
+  load_db_config "database-metadata/metadata" "RDS_MYSQL"
+  load_db_config "database-metadata/metadata" "RDS_POSTGRES"
+  load_db_config "database-metadata/metadata" "GCP_MYSQL"
+  load_db_config "database-metadata/metadata" "GCP_POSTGRES"
 fi
 
 pushd bosh-src > /dev/null

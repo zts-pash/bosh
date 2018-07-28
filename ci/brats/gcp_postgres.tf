@@ -1,7 +1,3 @@
-variable "gcp_postgres_username" {}
-variable "gcp_postgres_password" {}
-variable "gcp_postgres_databasename" {}
-
 resource "google_sql_database_instance" "postgres-master" {
   database_version = "POSTGRES_9_6"
   region           = "us-central1"
@@ -27,13 +23,13 @@ resource "google_sql_database_instance" "postgres-master" {
 
 resource "google_sql_database" "postgres" {
   instance  = "${google_sql_database_instance.postgres-master.name}"
-  name      = "${var.gcp_postgres_databasename}"
+  name      = "bosh_director"
 }
 
 resource "google_sql_user" "postgres" {
   instance = "${google_sql_database_instance.postgres-master.name}"
-  name     = "${var.gcp_postgres_username}"
-  password = "${var.gcp_postgres_password}"
+  name     = "root"
+  password = "${random_string.password.result}"
 }
 
 output "gcp_postgres_endpoint" {

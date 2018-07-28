@@ -1,7 +1,3 @@
-variable "gcp_mysql_username" {}
-variable "gcp_mysql_password" {}
-variable "gcp_mysql_databasename" {}
-
 resource "google_sql_database_instance" "mysql-master" {
   database_version = "MYSQL_5_7"
   region           = "us-central1"
@@ -27,13 +23,13 @@ resource "google_sql_database_instance" "mysql-master" {
 
 resource "google_sql_database" "mysql" {
   instance  = "${google_sql_database_instance.mysql-master.name}"
-  name      = "${var.gcp_mysql_databasename}"
+  name      = "bosh_director"
 }
 
 resource "google_sql_user" "mysql" {
   instance = "${google_sql_database_instance.mysql-master.name}"
-  name     = "${var.gcp_mysql_username}"
-  password = "${var.gcp_mysql_password}"
+  name     = "root"
+  password = "${random_string.password.result}"
 }
 
 output "gcp_mysql_endpoint" {
