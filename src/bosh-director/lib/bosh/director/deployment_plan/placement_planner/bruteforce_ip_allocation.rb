@@ -11,12 +11,11 @@ module Bosh
 
           def find_best_combination
             allocated_ips = AllocatedIps.new
-            @candidates = []
-            @candidates << { networks_to_static_ips: @networks_to_static_ips, allocated_ips: allocated_ips }
-            until @candidates.empty? do
-              candidate = @candidates.delete_at(0)
-
-              result = try_combination(candidate[:networks_to_static_ips], candidate[:allocated_ips])
+            @candidates = { next: { networks_to_static_ips: @networks_to_static_ips, allocated_ips: allocated_ips, next: nil } }
+            until @candidates[:next].nil? do
+              @candidates = @candidates[:next]
+              candidate = @candidates
+              result = try_combination(candidate, candidate[:networks_to_static_ips], candidate[:allocated_ips])
               return result unless result.nil?
             end
             return nil
@@ -24,8 +23,7 @@ module Bosh
 
           private
 
-          def try_combination(networks_to_static_ips, allocated_ips)
-            insert_pos = 0
+          def try_combination(list_location, networks_to_static_ips, allocated_ips)
             if all_ips_belong_to_single_az(networks_to_static_ips)
               if even_distribution_of_ips?(networks_to_static_ips)
                 return networks_to_static_ips
@@ -56,13 +54,25 @@ module Bosh
                   static_ip_to_azs.az_names = [az_name]
                   allocated_ips.allocate(az_name)
                   candidate_networks_to_static_ips = Bosh::Common::DeepCopy.copy(networks_to_static_ips)
-                  @candidates.insert(insert_pos, networks_to_static_ips: candidate_networks_to_static_ips, allocated_ips: AllocatedIps.new)
-                  insert_pos += 1
+                  insert_item(list_location, {
+                    networks_to_static_ips: candidate_networks_to_static_ips,
+                    allocated_ips: AllocatedIps.new,
+                  })
+
+                  list_location = list_location[:next]
+                  # @candidates.insert(insert_pos, networks_to_static_ips: candidate_networks_to_static_ips, allocated_ips: AllocatedIps.new)
+                  # insert_pos += 1
                 end
               end
             end
 
             return nil
+          end
+
+          def insert_item(list_pointer, item)
+            rest = list_pointer[:next]
+            item[:next] = rest
+            list_pointer[:next] = item
           end
 
           def even_distribution_of_ips?(networks_to_static_ips)
