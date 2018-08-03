@@ -10,38 +10,54 @@ module Bosh
           end
 
           def find_best_combination
-            Enumerator.new do |e|
-              try_combination(@networks_to_static_ips, e)
-            end.each do |networks_to_static_ips|
-              if all_ips_belong_to_single_az(networks_to_static_ips)
-                if even_distribution_of_ips?(networks_to_static_ips)
-                  return networks_to_static_ips
+            try_combination(@networks_to_static_ips)
+          end
+
+          private
+
+          def try_combination(networks_to_static_ips, stack=[])
+            iterate_networks(networks_to_static_ips)
+          end
+
+          def iterate_networks(networks_to_static_ips)
+            stack = { items: [] }
+            e = enumerate_networks(Bosh::Common::DeepCopy.copy(networks_to_static_ips), stack)
+            stack[:items].push(e)
+
+            until stack[:items].empty? do
+              next_enum = stack[:items].first
+              begin
+                candidate_network = next_enum.next
+                if all_ips_belong_to_single_az(candidate_network)
+                  if even_distribution_of_ips?(candidate_network)
+                    return candidate_network
+                  end
                 end
+              rescue StopIteration
+                stack[:items].delete(next_enum)
+                next
               end
             end
             return nil
           end
 
-          private
-
-          def try_combination(networks_to_static_ips, e)
-            e << networks_to_static_ips
-
-            network_iterator(networks_to_static_ips) do |allocated_ips, static_ip_to_azs|
-              candidate_iterator(allocated_ips, static_ip_to_azs, networks_to_static_ips) do |candidate_networks_to_static_ips|
-                result = try_combination(candidate_networks_to_static_ips, e)
-                next if result.nil?
-                return result
+          def enumerate_networks(networks_to_static_ips, stack)
+            Enumerator.new do |e|
+              network_iterator(networks_to_static_ips) do |allocated_ips, static_ip_to_azs|
+                candidate_iterator(allocated_ips, static_ip_to_azs, networks_to_static_ips) do |candidate_networks_to_static_ips|
+                  e << candidate_networks_to_static_ips
+                  next_enum = enumerate_networks(Bosh::Common::DeepCopy.copy(candidate_networks_to_static_ips), stack)
+                  stack[:items] = stack[:items].unshift(next_enum)
+                end
               end
             end
-
-            return nil
           end
 
           def candidate_iterator(allocated_ips, static_ip_to_azs, networks_to_static_ips)
             # prioritize AZs based on least number of allocated IPs
             sorted_az_names = allocated_ips.sort_by_least_allocated_ips(static_ip_to_azs.az_names)
             sorted_az_names.each do |az_name|
+              puts az_name
               static_ip_to_azs.az_names = [az_name]
               allocated_ips.allocate(az_name)
               yield networks_to_static_ips
