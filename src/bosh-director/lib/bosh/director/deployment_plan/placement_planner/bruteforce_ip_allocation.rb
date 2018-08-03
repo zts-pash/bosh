@@ -10,69 +10,56 @@ module Bosh
           end
 
           def find_best_combination
-            allocated_ips = AllocatedIps.new
-            @candidates = { next: { networks_to_static_ips: @networks_to_static_ips, allocated_ips: allocated_ips, next: nil } }
-            until @candidates[:next].nil? do
-              @candidates = @candidates[:next]
-              candidate = @candidates
-              result = try_combination(candidate, candidate[:networks_to_static_ips], candidate[:allocated_ips])
-              return result unless result.nil?
+            Enumerator.new do |e|
+              try_combination(@networks_to_static_ips, e)
+            end.each do |networks_to_static_ips|
+              if all_ips_belong_to_single_az(networks_to_static_ips)
+                if even_distribution_of_ips?(networks_to_static_ips)
+                  return networks_to_static_ips
+                end
+              end
             end
             return nil
           end
 
           private
 
-          def try_combination(list_location, networks_to_static_ips, allocated_ips)
-            if all_ips_belong_to_single_az(networks_to_static_ips)
-              if even_distribution_of_ips?(networks_to_static_ips)
-                return networks_to_static_ips
-              else
-                return nil
-              end
-            end
+          def try_combination(networks_to_static_ips, e)
+            e << networks_to_static_ips
 
-            previous_network = nil
-            networks_to_static_ips.each do |network, static_ips_to_azs|
-              if previous_network
-                previous_assignment = PreviousAssignment.new(networks_to_static_ips[previous_network])
-                unless previous_assignment.has_same_distribution?(static_ips_to_azs)
-                  return nil
-                end
-              end
-              previous_network = network
-
-              static_ips_to_azs.each_with_index do |static_ip_to_azs|
-                if static_ip_to_azs.az_names.size == 1
-                  allocated_ips.allocate(static_ip_to_azs.az_names.first)
-                  next
-                end
-
-                # prioritize AZs based on least number of allocated IPs
-                sorted_az_names = allocated_ips.sort_by_least_allocated_ips(static_ip_to_azs.az_names)
-                sorted_az_names.each do |az_name|
-                  static_ip_to_azs.az_names = [az_name]
-                  allocated_ips.allocate(az_name)
-                  candidate_networks_to_static_ips = Bosh::Common::DeepCopy.copy(networks_to_static_ips)
-                  insert_item(list_location, {
-                    networks_to_static_ips: candidate_networks_to_static_ips,
-                    allocated_ips: AllocatedIps.new,
-                  })
-
-                  list_location = list_location[:next]
-                  # @candidates.insert(insert_pos, networks_to_static_ips: candidate_networks_to_static_ips, allocated_ips: AllocatedIps.new)
-                  # insert_pos += 1
-                end
+            network_iterator(networks_to_static_ips) do |allocated_ips, static_ip_to_azs|
+              candidate_iterator(allocated_ips, static_ip_to_azs, networks_to_static_ips) do |candidate_networks_to_static_ips|
+                result = try_combination(candidate_networks_to_static_ips, e)
+                next if result.nil?
+                return result
               end
             end
 
             return nil
           end
 
-          def insert_item(list_pointer, item)
-            rest = list_pointer[:next]
-            item[:next] = rest
-            list_pointer[:next] = item
+          def candidate_iterator(allocated_ips, static_ip_to_azs, networks_to_static_ips)
+            # prioritize AZs based on least number of allocated IPs
+            sorted_az_names = allocated_ips.sort_by_least_allocated_ips(static_ip_to_azs.az_names)
+            sorted_az_names.each do |az_name|
+              static_ip_to_azs.az_names = [az_name]
+              allocated_ips.allocate(az_name)
+              yield networks_to_static_ips
+            end
+          end
+
+          def network_iterator(networks_to_static_ips)
+            allocated_ips = AllocatedIps.new
+            networks_to_static_ips.each do |_, static_ips_to_azs|
+              static_ips_to_azs.each_with_index do |static_ip_to_azs|
+                if static_ip_to_azs.az_names.size == 1
+                  allocated_ips.allocate(static_ip_to_azs.az_names.first)
+                  next
+                end
+
+                yield allocated_ips, static_ip_to_azs
+              end
+            end
           end
 
           def even_distribution_of_ips?(networks_to_static_ips)
@@ -85,6 +72,7 @@ module Bosh
                   hash[network][az_name] += 1
                 end
               end
+
             end
 
             hash.values.uniq.size > 1 ? false : true
