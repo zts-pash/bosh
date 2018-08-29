@@ -40,6 +40,8 @@ module Bosh::Director
             @logger.error("Failed to create/contact VM #{instance_model.vm_cid}: #{e.inspect}")
             if Config.keep_unreachable_vms
               @logger.info('Keeping the VM for debugging')
+              CommitInstanceNetworkSettingsStep.new.perform(report)
+              Steps::OrphanVmStep.new(vm, keep: true).perform(nil)
             else
               DeleteVmStep.new.perform(report)
             end

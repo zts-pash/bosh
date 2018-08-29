@@ -2,8 +2,9 @@ module Bosh::Director
   module DeploymentPlan
     module Steps
       class OrphanVmStep
-        def initialize(vm)
+        def initialize(vm, keep: false)
           @vm = vm
+          @keep = keep
           @transactor = Transactor.new
         end
 
@@ -23,6 +24,7 @@ module Bosh::Director
                 instance_name: @vm.instance.name,
                 orphaned_at: Time.now,
                 stemcell_api_version: @vm.stemcell_api_version,
+                keep: @keep,
               )
 
               @vm.ip_addresses_dataset.all.each do |ip_address|

@@ -8,7 +8,7 @@ module Bosh::Director
 
     def delete_all(lock_timeout = 5)
       ThreadPool.new(max_threads: Config.max_threads).wrap do |pool|
-        Models::OrphanedVm.all.each do |vm|
+        Models::OrphanedVm.where(keep: false).each do |vm|
           pool.process do
             delete_vm(vm, lock_timeout)
           end
