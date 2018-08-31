@@ -63,6 +63,14 @@ module Bosh::Director
       "#{index}"
     end
 
+    def id_for_link_provider_tuple(link_provider_name, deployment)
+      index = @service_groups[{
+        link_provider_name: link_provider_name,
+        deployment: deployment,
+      }]
+      index.to_s
+    end
+
     private
 
     def query_slug(criteria, use_short_dns)

@@ -8,7 +8,7 @@ module Bosh
       attr_reader :instances
       attr_reader :properties
 
-      def initialize(instances, properties, instance_group, default_network, deployment_name, root_domain, dns_encoder, use_short_dns)
+      def initialize(instances, properties, instance_group, default_network, deployment_name, root_domain, dns_encoder, use_short_dns, link_provider_name)
         @instances = instances
         @properties = properties
         @instance_group = instance_group
@@ -17,6 +17,7 @@ module Bosh
         @root_domain = root_domain
         @dns_encoder = dns_encoder
         @use_short_dns = use_short_dns
+        @link_provider_name = link_provider_name
       end
 
       def p(*args)
@@ -45,8 +46,11 @@ module Bosh
       def address(criteria = {})
         raise NotImplementedError.new('link.address requires bosh director') if @dns_encoder.nil?
 
+        instance_group = @instance_group
+        instance_group = "link-#{@link_provider_name}" unless @link_provider_name.empty?
+
         full_criteria = criteria.merge(
-          instance_group: @instance_group,
+          instance_group: instance_group,
           default_network: @default_network,
           deployment_name: @deployment_name,
           root_domain: @root_domain,

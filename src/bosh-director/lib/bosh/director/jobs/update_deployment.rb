@@ -269,6 +269,7 @@ module Bosh::Director
               logger,
             )
           rescue Exception => e
+            raise e
             errors.push e
           end
         end

@@ -39,8 +39,6 @@ module Bosh::Director
       create_dns_encoder(plan.use_short_dns_addresses?)
     end
 
-    private
-
     def self.with_skip_dupes
       yield
     rescue Sequel::UniqueConstraintViolation => _
@@ -59,6 +57,16 @@ module Bosh::Director
       end
     end
 
+    def self.encode_link_provider(name, deployment_model)
+      with_skip_dupes do
+        Models::LocalDnsEncodedInstanceGroup.find_or_create(
+          # TODO(DB,JM): separate table? shared table between instance groups/links?
+          name: "link-#{name}",
+          deployment: deployment_model,
+        )
+      end
+    end
+
     def self.encode_network(name)
       with_skip_dupes { Models::LocalDnsEncodedNetwork.find_or_create(name: name) }
     end
@@ -68,6 +76,10 @@ module Bosh::Director
 
       plan.instance_groups.each do |ig|
         encode_instance_group(ig.name, deployment_model)
+      end
+
+      plan.links_manager.get_link_providers_for_deployment(deployment_model).each do |provider|
+        encode_link_provider(provider.name, deployment_model)
       end
     end
   end

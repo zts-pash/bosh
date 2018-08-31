@@ -207,6 +207,12 @@ module Bosh::Director::Links
       links
     end
 
+    # TODO(DB/JM): Do we need to filter by links_serial_id?
+    # TODO(DB/JM): Do we need to perform further validation on valid links?
+    def get_link_providers_for_deployment(deployment)
+      Bosh::Director::Models::Links::LinkProvider.where(deployment: deployment, serial_id: deployment.links_serial_id).all
+    end
+
     def get_links_for_instance_group(deployment_model, instance_group_name)
       links = {}
       consumers = Bosh::Director::Models::Links::LinkConsumer.where(deployment: deployment_model, instance_group: instance_group_name, serial_id: deployment_model.links_serial_id)
@@ -477,6 +483,7 @@ module Bosh::Director::Links
       provider_content = provider_intent.content || '{}'
       # determine what network name / dns entry things to use
       link_spec = update_addresses(JSON.parse(provider_content), link_network, global_use_dns_entry, link_use_ip_address)
+      link_spec['link_provider_name'] = provider_intent.name.empty? ? provider_intent.original_name : provider_intent.name
       link_spec.to_json
     end
 

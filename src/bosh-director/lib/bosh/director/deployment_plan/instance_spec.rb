@@ -133,6 +133,7 @@ module Bosh::Director
           'domain',
           'address',
           'use_short_dns_addresses',
+          'link_provider_name',
         ]
 
         template_hash = @full_spec.select {|k,v| keys.include?(k) }
