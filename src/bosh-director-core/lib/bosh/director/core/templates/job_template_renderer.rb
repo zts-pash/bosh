@@ -12,6 +12,7 @@ module Bosh::Director::Core::Templates
     attr_reader :monit_erb, :source_erbs
 
     def initialize(job_template, template_name, monit_erb, source_erbs, logger, dns_encoder = nil)
+      @job_template = job_template # TODO(db,ls) take only what we need
       @name = job_template.name
       @release = job_template.release
       @template_name = template_name
@@ -58,10 +59,32 @@ module Bosh::Director::Core::Templates
         raise message
       end
 
+      rendered_files << RenderedFileTemplate.new("bosh/links", "bosh/links", links_data(spec))
+
       RenderedJobTemplate.new(@name, monit, rendered_files)
     end
 
     private
+
+    def links_data(spec)
+      spec_json = JSON.parse(@job_template.model.spec_json)
+
+      return '[]' unless spec_json.has_key?("provides")
+
+      data = spec_json["provides"].map do |provide|
+        [
+          'name' => provide['name'],
+          'type' => provide['type'],
+          'base_address' => @dns_encoder.encode_query(
+            root_domain: 'bosh',
+            deployment_name: spec['deployment'],
+            instance_group: "link-#{provide['name']}", # TODO(db,ls) job should be part of this since multiple jobs in this deployment could have this provided name
+          ).split('.', 2)[1],
+        ]
+      end
+
+      JSON.pretty_generate(data) + "\n"
+    end
 
     def namespace_links_to_current_job(spec)
       if spec.nil?
