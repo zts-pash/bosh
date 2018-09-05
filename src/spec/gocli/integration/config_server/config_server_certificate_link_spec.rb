@@ -145,6 +145,101 @@ describe 'using director with config server and deployments having links', type:
     expect(alternative_names).to match_array(['127.0.0.1', 'q-s0.my-instance-group.a.simple.bosh'])
   end
 
+  context 'when rotating CA' do
+    let(:instance_groups) do
+      [Bosh::Spec::NewDeployments.simple_instance_group(
+        name: 'my_instance_group',
+        jobs: [
+          provider_job,
+          { 'name' => 'cert_consumer' },
+        ],
+        instances: 1,
+        ).tap do |ig|
+        ig['azs'] = ['z1']
+      end]
+    end
+
+    let(:variables) do
+      [
+        {
+          'name' => 'bbs_ca',
+          'type' => 'certificate',
+          'options' => { 'is_ca' => true, 'common_name' => 'bbs CA' },
+        },
+        {
+          'name' => 'bbs',
+          'type' => 'certificate',
+          'options' => { 'ca' => 'bbs_ca', 'common_name' => 'bbs corp', 'alternative_names' => ['127.0.0.1'] },
+        },
+      ]
+    end
+
+    let(:provider_job) do
+      {
+        'name' => 'provider',
+        'properties' => {
+          'a' => '((bbs_ca.ca))',
+          'b' => '((bbs))',
+          'nested' => { 'three' => 'foo' },
+        },
+      }
+    end
+    before do
+      deployment_manifest['variables'] = variables
+    end
+
+    it 'should follow steps to move CA from transitional state' do
+      # step one: deploy
+      deploy_simple_manifest(manifest_hash: deployment_manifest, include_credentials: false, env: client_env)
+
+      initial_ca = config_server_helper.get_value(prepend_namespace('bbs_ca'))
+
+      instance = director.instance('my_instance_group', '0', deployment_name: 'simple', include_credentials: false,  env: client_env)
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to eq(initial_ca['ca'])
+
+      # step 2: regenerate and recreate
+      config_server_helper.regenerate_certificate(prepend_namespace('bbs_ca'), '{"set_as_transitional": true}')
+      deploy_simple_manifest(manifest_hash: deployment_manifest, include_credentials: false, env: client_env)
+
+      instance = director.instance('my_instance_group', '0', deployment_name: 'simple', include_credentials: false,  env: client_env)
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to_not eq(initial_ca['ca'])
+
+      cert1 = config_server_helper.get_value(prepend_namespace('bbs_ca'))
+      cert2 = config_server_helper.get_second_value(prepend_namespace('bbs_ca'))
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to eq(cert2['ca']+cert1['ca'])
+
+      # step 3: update transitional certificate, regenerate server cert and recreate
+      config_server_helper.update_transitional_certificate(prepend_namespace('bbs_ca'))
+      config_server_helper.regenerate_certificate(prepend_namespace('bbs'))
+      deploy_simple_manifest(manifest_hash: deployment_manifest, include_credentials: false, env: client_env)
+
+      instance = director.instance('my_instance_group', '0', deployment_name: 'simple', include_credentials: false,  env: client_env)
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to eq(cert1['ca']+cert2['ca'])
+      server_cert = YAML.load(instance.read_job_template('cert_consumer', 'certificate.yml'))
+      expect(server_cert['ca']).to_not eq(initial_ca['ca'])
+      expect(server_cert['ca']).to eq(cert1['ca'])
+
+      # step 4: remove transitional certificate and recreate
+      config_server_helper.remove_transitional_certificate(prepend_namespace('bbs_ca'))
+      deploy_simple_manifest(manifest_hash: deployment_manifest, include_credentials: false, env: client_env)
+
+      instance = director.instance('my_instance_group', '0', deployment_name: 'simple', include_credentials: false,  env: client_env)
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to_not eq(initial_ca['ca'])
+      expect(ca_pem).to eq(cert1['ca'])
+
+      bosh_runner.run('recreate', deployment_name: 'simple', json: true, include_credentials: false, env: client_env)
+      instance = director.instance('my_instance_group', '0', deployment_name: 'simple', include_credentials: false,  env: client_env)
+      ca_pem = instance.read_job_template('cert_consumer', 'ca.pem')
+      expect(ca_pem).to_not eq(initial_ca['ca'])
+      expect(ca_pem).to eq(cert1['ca'])
+    end
+  end
+
   context 'when the runtime config has variable which consumes' do
     let(:runtime_config) do
       Bosh::Spec::Deployments.runtime_config_latest_release.tap do |config|
@@ -177,7 +272,7 @@ describe 'using director with config server and deployments having links', type:
           {
             'name' => 'bbs_ca',
             'type' => 'certificate',
-            'options' => { 'is_ca' => true },
+            'options' => { 'is_ca' => true, 'common_name'=> 'bbs_ca_root'},
           },
           {
             'name' => 'bbs',
@@ -194,8 +289,6 @@ describe 'using director with config server and deployments having links', type:
         cert = config_server_helper.get_value(prepend_namespace('bbs'))
         cert = OpenSSL::X509::Certificate.new(cert['certificate'])
         subject = cert.subject.to_a
-        puts cert.inspect
-        puts subject.inspect
         common_name = subject.select { |name, _, _| name == 'CN' }.first[1]
         expect(common_name).to eq('q-s0.my-instance-group.a.simple.bosh')
 

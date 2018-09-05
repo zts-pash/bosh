@@ -194,18 +194,18 @@ module Bosh::Director::ConfigServer
           if saved_variable_mapping.nil?
             raise Bosh::Director::ConfigServerInconsistentVariableState, "Expected variable '#{name_root}' to be already versioned in deployment '#{deployment_name}'" unless variable_set.writable
 
-            variable_id, variable_value = get_variable_id_and_value_by_name(name)
+            variable_id, variable_value, alternate_variable_id = get_variable_id_and_value_by_name(name)
 
-            begin
-              save_variable(name_root, variable_set, variable_id)
+             begin
+              save_variable(name_root, variable_set, variable_id, alternate_variable_id)
               config_values[variable] = variable_value
             rescue Sequel::UniqueConstraintViolation
               saved_variable_mapping = variable_set.find_variable_by_name(name_root)
-              config_values[variable] = get_variable_value_by_id(saved_variable_mapping.variable_name, saved_variable_mapping.variable_id)
+              config_values[variable] = get_variable_value_by_id(saved_variable_mapping.variable_name, saved_variable_mapping.variable_id, saved_variable_mapping.alternate_variable_id)
             end
 
           else
-            config_values[variable] = get_variable_value_by_id(name, saved_variable_mapping.variable_id)
+            config_values[variable] = get_variable_value_by_id(name, saved_variable_mapping.variable_id, saved_variable_mapping.alternate_variable_id)
           end
         rescue Bosh::Director::ConfigServerFetchError, Bosh::Director::ConfigServerMissingName => e
           errors << e
@@ -297,12 +297,14 @@ module Bosh::Director::ConfigServer
       config_values
     end
 
-    def get_variable_value_by_id(name, id)
+    def get_variable_value_by_id(name, id, alternate_id = nil)
       name_root = get_name_root(name)
       response = @config_server_http_client.get_by_id(id)
+      response2 = @config_server_http_client.get_by_id(alternate_id) unless alternate_id.nil?
 
       begin
         parsed_response = JSON.parse(response.body)
+        parsed_response2 = JSON.parse(response2.body) unless alternate_id.nil?
       rescue JSON::ParserError
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' with id '#{id}' from config server: Invalid JSON response"
       end
@@ -316,6 +318,13 @@ module Bosh::Director::ConfigServer
       raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to be a hash, got '#{parsed_response.class}'" unless parsed_response.is_a?(Hash)
       raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'id'" unless parsed_response.has_key?('id')
       raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'value'" unless parsed_response.has_key?('value')
+
+      unless alternate_id.nil?
+        parsed_response['value']['ca'] += parsed_response2['value']['ca']
+        parsed_response['value']['certificate'] += parsed_response2['value']['certificate']
+
+        return extract_variable_value(name, parsed_response['value'])
+      end
 
       extract_variable_value(name, parsed_response['value'])
     end
@@ -355,6 +364,17 @@ module Bosh::Director::ConfigServer
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'id'" unless fetched_variable.has_key?('id')
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'value'" unless fetched_variable.has_key?('value')
 
+        fetched_alternate_variable = response_data[1]
+        unless fetched_alternate_variable.nil?
+          if fetched_variable['transitional']
+            fetched_alternate_variable['value']['ca'] += fetched_variable['value']['ca']
+            return fetched_alternate_variable['id'], extract_variable_value(name, fetched_alternate_variable['value'])
+          else
+            fetched_variable['value']['ca'] += fetched_alternate_variable['value']['ca']
+            return fetched_variable['id'], extract_variable_value(name, fetched_variable['value'])
+          end
+        end
+
         return fetched_variable['id'], extract_variable_value(name, fetched_variable['value'])
       elsif response.kind_of? Net::HTTPNotFound
         raise Bosh::Director::ConfigServerMissingName, "Failed to find variable '#{name_root}' from config server: HTTP Code '404', Error: '#{response_body['error']}'"
@@ -370,8 +390,8 @@ module Bosh::Director::ConfigServer
       false
     end
 
-    def save_variable(name_root, variable_set, variable_id)
-      variable_set.add_variable(variable_name: name_root, variable_id: variable_id)
+    def save_variable(name_root, variable_set, variable_id, alternate_variable_id)
+      variable_set.add_variable(variable_name: name_root, variable_id: variable_id, alternate_variable_id: alternate_variable_id)
     end
 
     def generate_value(name, type, variable_set, options, converge_variable)
@@ -391,10 +411,16 @@ module Bosh::Director::ConfigServer
 
       response = @config_server_http_client.post(request_body)
 
+      if type == 'certificate'
+        response2 = @config_server_http_client.get(name)
+      end
+
       begin
-        parsed_response_body = JSON.parse(response.body)
+        body = response.body
+        parsed_response_body = JSON.parse(body)
+        parsed_response_body2 = JSON.parse(response2.body) if type == 'certificate'
       rescue JSON::ParserError
-        raise Bosh::Director::ConfigServerGenerationError, "Config Server returned a NON-JSON body while generating value for '#{get_name_root(name)}' with type '#{type}'"
+        raise Bosh::Director::ConfigServerGenerationError, "Config Server returned a NON-JSON body while generating value for '#{get_name_root(name)}' with type '#{type}':::#{body}:::"
       end
 
       unless response.kind_of? Net::HTTPSuccess
@@ -403,27 +429,22 @@ module Bosh::Director::ConfigServer
       end
 
       generated_variable = parsed_response_body
+      if type == 'certificate' && parsed_response_body2['data'].size == 2
+        index = 0
+        index = 1 if parsed_response_body2['data'][0]['transitional']
+        generated_variable['id'] = parsed_response_body2['data'][index]['id']
+        generated_variable['alternate_id'] = parsed_response_body2['data'][1-index]['id']
+      end
 
       raise Bosh::Director::ConfigServerGenerationError, "Failed to version generated variable '#{name}'. Expected Config Server response to have key 'id'" unless generated_variable.has_key?('id')
 
       begin
-        save_variable(get_name_root(name), variable_set, generated_variable['id'])
+        save_variable(get_name_root(name), variable_set, generated_variable['id'], generated_variable['alternate_id'])
       rescue Sequel::UniqueConstraintViolation
         @logger.debug("variable '#{get_name_root(name)}' was already added to set '#{variable_set.id}'")
       end
 
       generated_variable
-    end
-
-    def generate_certificate(name, deployment_name, variable_set, options)
-      dns_record_names = options[:dns_record_names]
-
-      certificate_options = {
-        'common_name' => dns_record_names.first,
-        'alternative_names' => dns_record_names
-      }
-
-      generate_value_and_record_event(name, 'certificate', deployment_name, variable_set, certificate_options)
     end
 
     def get_name_root(variable_name)

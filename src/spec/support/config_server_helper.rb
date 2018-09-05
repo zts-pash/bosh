@@ -39,6 +39,65 @@ module Bosh::Spec
       JSON.parse(response.body)['data'][0]['value']
     end
 
+    def get_second_value(name)
+      config_server_url = build_uri
+      config_server_url.query = URI.escape("name=#{name}")
+
+      response = send_request('GET', config_server_url, nil)
+      raise "Config server responded with an error.\n #{response.inspect}" unless response.kind_of? Net::HTTPSuccess
+      body = JSON.parse(response.body)
+      body['data'][1]['value']
+    end
+
+    def regenerate_certificate(name, body = nil)
+      uri = URI.join(base_uri, URI.escape("v1/certificates?name=#{name}"))
+      result = send_request('GET', uri, nil)
+      result_body = JSON.parse(result.body)
+
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      id = result_body['certificates'][0]['id']
+      uri = URI.join(base_uri, URI.escape("v1/certificates/#{id}/regenerate"))
+      result = send_request('POST', uri, body)
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      result
+    end
+
+    def update_transitional_certificate(name)
+      uri = URI.join(base_uri, URI.escape("v1/certificates?name=#{name}"))
+      result = send_request('GET', uri, nil)
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      name_id = JSON.parse(result.body)['certificates'][0]['id']
+
+      config_server_url = build_uri
+      config_server_url.query = URI.escape("name=#{name}")
+
+      response = send_request('GET', config_server_url, nil)
+      raise "Config server responded with an error.\n #{response.inspect}" unless response.kind_of? Net::HTTPSuccess
+      real = JSON.parse(response.body)['data']
+      version_id = real[0]['id']
+      version_id = real[1]['id'] if real[0]['transitional']
+
+      uri = URI.join(base_uri, URI.escape("v1/certificates/#{name_id}/update_transitional_version"))
+      body = '{"version": "' + version_id + '"}'
+      result = send_request('PUT', uri, body)
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      result
+    end
+
+    def remove_transitional_certificate(name)
+      uri = URI.join(base_uri, URI.escape("v1/certificates?name=#{name}"))
+      result = send_request('GET', uri, nil)
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      name_id = JSON.parse(result.body)['certificates'][0]['id']
+
+      uri = URI.join(base_uri, URI.escape("v1/certificates/#{name_id}/update_transitional_version"))
+      body = '{"version": null}'
+      result = send_request('PUT', uri, body)
+      raise "Config server responded with an error.\n #{result.inspect}" unless result.kind_of? Net::HTTPSuccess
+      result
+    end
+
+
     def send_request(verb, url, body)
       http = Net::HTTP.new(url.host, url.port)
       http.use_ssl = true
@@ -67,7 +126,11 @@ module Bosh::Spec
     end
 
     def build_uri
-      URI("http://127.0.0.1:#{@port}/v1/data")
+      URI.join(base_uri, "v1/data")
+    end
+
+    def base_uri
+      URI("http://127.0.0.1:#{@port}/")
     end
   end
 end

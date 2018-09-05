@@ -1,0 +1,12 @@
+---
+name: cert_consumer
+templates:
+  config.yml.erb: config.yml
+  ca.pem.erb: ca.pem
+  certificate.yml.erb: certificate.yml
+
+consumes:
+  - name: provider
+    type: provider
+
+properties: {}
