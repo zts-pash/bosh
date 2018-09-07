@@ -98,13 +98,17 @@ module Bosh::Director::ConfigServer
           unless links.empty?
             variable['options'] ||= {}
             links.each do |type, link|
-              link_url = generate_dns_address_from_link(link)
+              link_url_wildcard = generate_dns_address_from_link(link, true)
+              link_url_nowildcard = generate_dns_address_from_link(link, false)
+              ig_url_wildcard = generate_dns_address_for_instance_group(link, true)
 
               if type == 'alternative_name'
                 variable['options']['alternative_names'] ||= []
-                variable['options']['alternative_names'] << link_url
+                variable['options']['alternative_names'] << link_url_wildcard
+                variable['options']['alternative_names'] << link_url_nowildcard
+                variable['options']['alternative_names'] << ig_url_wildcard
               elsif type == 'common_name'
-                variable['options'][type] = variable['options'][type] || link_url
+                variable['options'][type] = variable['options'][type] || link_url_nowildcard
               end
             end
           end
@@ -148,7 +152,7 @@ module Bosh::Director::ConfigServer
       result
     end
 
-    def generate_dns_address_from_link(link)
+    def generate_dns_address_for_instance_group(link, wildcard=false)
       link_content = JSON.parse(link.link_content)
 
       return link_content['address'] if link.link_provider_intent&.link_provider&.type == 'manual'
@@ -160,9 +164,31 @@ module Bosh::Director::ConfigServer
         instance_group: link_content['instance_group'],
         default_network: link_content['default_network'],
         root_domain: link_content['domain'],
+        status: 'all',
       }
       url = dns_encoder.encode_query(query_criteria)
-      url = generate_wildcard(url) if link_wants_wildcard(link)
+      url = generate_wildcard(url) if wildcard
+      url
+    end
+
+    # asdf
+    def generate_dns_address_from_link(link, wildcard=false)
+      link_content = JSON.parse(link.link_content)
+
+      return link_content['address'] if link.link_provider_intent&.link_provider&.type == 'manual'
+
+      use_short_dns_addresses = link_content.fetch('use_short_dns_addresses', false)
+      dns_encoder = Bosh::Director::LocalDnsEncoderManager.create_dns_encoder(use_short_dns_addresses)
+      query_criteria = {
+        deployment_name: link_content['deployment_name'],
+        # instance_group: link_content['instance_group'],
+        instance_group: "link-#{link.link_provider_intent&.name}",
+        default_network: link_content['default_network'],
+        root_domain: link_content['domain'],
+        status: 'all',
+      }
+      url = dns_encoder.encode_query(query_criteria)
+      url = generate_wildcard(url) if wildcard
       url
     end
 

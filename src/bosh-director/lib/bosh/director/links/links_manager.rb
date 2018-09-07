@@ -209,8 +209,9 @@ module Bosh::Director::Links
 
     # TODO(DB/JM): Do we need to filter by links_serial_id?
     # TODO(DB/JM): Do we need to perform further validation on valid links?
+    # TODO(db,mx): is serial_id global? should we be filtering by deployment?
     def get_link_providers_for_deployment(deployment)
-      Bosh::Director::Models::Links::LinkProvider.where(deployment: deployment, serial_id: deployment.links_serial_id).all
+      Bosh::Director::Models::Links::LinkProviderIntent.where(serial_id: deployment.links_serial_id).all
     end
 
     def get_links_for_instance_group(deployment_model, instance_group_name)

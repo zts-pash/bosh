@@ -5,8 +5,8 @@ module Bosh::Director
       @root_domain = root_domain
     end
 
-    def update_for_instance(instance_model)
-      diff = diff(instance_model)
+    def update_for_instance(instance_model, job_templates=nil)
+      diff = diff(instance_model, job_templates)
       @logger.debug("Updating local dns records for '#{instance_model}': obsolete records: #{dump(diff.obsolete)}, new records: #{dump(diff.missing)}, unmodified records: #{dump(diff.unaffected)}")
 
       Config.db.transaction do
@@ -24,9 +24,9 @@ module Bosh::Director
       end
     end
 
-    def diff(instance_model)
+    def diff(instance_model, job_templates=nil)
       existing_record_hashes = existing_record_hashes(instance_model)
-      desired_record_hashes = desired_record_hashes(instance_model)
+      desired_record_hashes = desired_record_hashes(instance_model, job_templates)
 
       new_record_hashes = desired_record_hashes - existing_record_hashes
       obsolete_record_hashes = existing_record_hashes - desired_record_hashes
@@ -48,22 +48,33 @@ module Bosh::Director
 
     private
 
-    def desired_record_hashes(instance_model)
-      networks_and_ips(instance_model).map do |network_to_ip|
+    def desired_record_hashes(instance_model, job_templates)
+      networks_and_ips(instance_model).flat_map do |network_to_ip|
         agent_id = nil
         if instance_model.active_vm != nil
           agent_id = instance_model.active_vm.agent_id
         end
 
-        {
-          :ip => network_to_ip[:ip],
-          :instance_id => instance_model.id,
-          :az => instance_model.availability_zone,
-          :network => network_to_ip[:name],
-          :deployment => instance_model.deployment.name,
-          :instance_group => instance_model.job,
-          :agent_id => agent_id,
-          :domain => @root_domain
+        (job_templates || instance_model.templates).flat_map(&:provides).map do |link_provider|
+          {
+            ip: network_to_ip[:ip],
+            instance_id: instance_model.id,
+            az: instance_model.availability_zone,
+            network: network_to_ip[:name],
+            deployment: instance_model.deployment.name,
+            instance_group: "link-#{link_provider['name']}",
+            agent_id: agent_id,
+            domain: @root_domain,
+          }
+        end << {
+          ip: network_to_ip[:ip],
+          instance_id: instance_model.id,
+          az: instance_model.availability_zone,
+          network: network_to_ip[:name],
+          deployment: instance_model.deployment.name,
+          instance_group: instance_model.job,
+          agent_id: agent_id,
+          domain: @root_domain,
         }
       end
     end

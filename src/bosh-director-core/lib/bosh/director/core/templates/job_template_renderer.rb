@@ -67,12 +67,8 @@ module Bosh::Director::Core::Templates
     private
 
     def links_data(spec)
-      spec_json = JSON.parse(@job_template.model.spec_json)
-
-      return '[]' unless spec_json.has_key?("provides")
-
-      data = spec_json["provides"].map do |provide|
-        [
+      data = @job_template.model.provides.map do |provide|
+        {
           'name' => provide['name'],
           'type' => provide['type'],
           'base_address' => @dns_encoder.encode_query(
@@ -80,7 +76,7 @@ module Bosh::Director::Core::Templates
             deployment_name: spec['deployment'],
             instance_group: "link-#{provide['name']}", # TODO(db,ls) job should be part of this since multiple jobs in this deployment could have this provided name
           ).split('.', 2)[1],
-        ]
+        }
       end
 
       JSON.pretty_generate(data) + "\n"

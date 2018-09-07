@@ -78,6 +78,8 @@ module Bosh::Director
           dns_record.agent_id,
         )
       end
+
+      # iterate over 
       dns_records
     end
   end
