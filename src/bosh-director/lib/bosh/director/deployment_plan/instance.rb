@@ -254,6 +254,10 @@ module Bosh::Director
         case @virtual_state
         when 'recreate'
           'started'
+        when 'resurrect'
+          # can this 'resurrect' virtual state be used to influence how the deploy flow recreates a vm?
+          # possibly have a conditional on this in planner/assembler/factory to force using existing instance spec from database like scan_and_fix?
+          'started'
         when 'restart'
           'started'
         else

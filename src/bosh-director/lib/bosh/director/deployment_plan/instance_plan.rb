@@ -125,7 +125,7 @@ module Bosh
             @logger.debug("#{__method__} instance should be recreated because of unresponsive agent")
             true
           else
-            @instance.virtual_state == 'recreate'
+            ['recreate', 'resurrect'].include?(@instance.virtual_state)
           end
         end
 
@@ -278,6 +278,7 @@ module Bosh
           !new? && !obsolete?
         end
 
+        # can this just rely on spec['networks']? who relies on this object, externally? possibly for looking up addresses in DNS form?
         def network_settings
           desired_reservations = network_plans
                                  .reject(&:obsolete?)
@@ -460,18 +461,23 @@ module Bosh
       end
 
       class ResurrectionInstancePlan < InstancePlan
+        # if InstancePlan.network_settings[_hash] could rely on spec, this difference can be removed
         def network_settings_hash
           @existing_instance.spec_p('networks')
         end
 
+        # this should happen by whoever runs InstancePlan.new; shouldn't happen dynamically
         def spec
           InstanceSpec.create_from_database(@existing_instance.spec, @instance, @variables_interpolator)
         end
 
+        # this seems to be similiar ot the super class needs_disk
+        # caller should prepare a DesiredInstance whose needs_disk?-equivalent is based on the current instance's managed_persistent_disk_cid value
         def needs_disk?
           @existing_instance.managed_persistent_disk_cid
         end
 
+        # TODO: this is just dynamically loading templates/jobs; preload this in the caller and pass it via the DesiredInstance object; then this difference is no longer necessary
         def templates
           @existing_instance.templates.map do |template_model|
             model_release_version = @instance.model.deployment.release_versions.find do |release_version|

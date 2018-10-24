@@ -74,23 +74,54 @@ module Bosh::Director
 
       # PUT /deployments/foo/jobs/dea/2?state={started,stopped,detached,restart,recreate}&skip_drain=true&fix=true
       put '/:deployment/jobs/:job/:index_or_id', consumes: :yaml do
-        validate_instance_index_or_id(params[:index_or_id])
-
-        instance = @instance_manager.find_by_name(deployment, params[:job], params[:index_or_id])
-        index = instance.index
-
-        options = {
-          'job_states' => {
-            params[:job] => {
-              'instance_states' => {
-                index => params['state'],
+        if params[:job] == 'fake-resurrection'
+          options = {
+            'job_states' => {
+              'default' => {
+                'instance_states' => {
+                  '054c763d-c8fa-44c0-885a-43f3530ced26' => 'recreate',
+                  '66ee0da1-4cf6-44eb-97f1-19fe2346170c' => 'recreate',
+                  '797fb2c8-18af-4d94-80be-d8299eb27569' => 'recreate',
+                },
+              },
+              'default2' => {
+                'instance_states' => {
+                  '0' => 'recreate',
+                  '1' => 'recreate',
+                  '2' => 'recreate',
+                },
+              },
+              'default3' => {
+                'instance_states' => {
+                  '0' => 'recreate',
+                  '1' => 'recreate',
+                  '2' => 'recreate',
+                },
               },
             },
-          },
-        }
-        options['skip_drain'] = params[:job] if params['skip_drain'] == 'true'
-        options['fix'] = true if params['fix'] == 'true'
-        options['dry_run'] = true if params['dry_run'] == 'true'
+            'fix' => true,
+            'skip_drain' => true,
+          }
+        else
+          validate_instance_index_or_id(params[:index_or_id])
+
+          instance = @instance_manager.find_by_name(deployment, params[:job], params[:index_or_id])
+          index = instance.index
+
+          options = {
+            'job_states' => {
+              params[:job] => {
+                'instance_states' => {
+                  index => params['state'],
+                },
+              },
+            },
+          }
+
+          options['skip_drain'] = params[:job] if params['skip_drain'] == 'true'
+          options['fix'] = true if params['fix'] == 'true'
+          options['dry_run'] = true if params['dry_run'] == 'true'
+        end
 
         if request.content_length.nil? || request.content_length.to_i == 0
           manifest = deployment.manifest

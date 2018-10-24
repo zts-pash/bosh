@@ -65,6 +65,7 @@ module Bosh::Director
 
       instance_plan_to_create = create_instance_plan(instance_model)
 
+      #template_cache = Bosh::Director::Core::Templates::TemplateBlobCache.new
       Bosh::Director::Core::Templates::TemplateBlobCache.with_fresh_cache do |template_cache|
         vm_creator(template_cache, dns_encoder).create_for_instance_plan(
           instance_plan_to_create,
@@ -134,9 +135,6 @@ module Bosh::Director
     private
 
     def create_instance_plan(instance_model)
-      stemcell = DeploymentPlan::Stemcell.parse(instance_model.spec['stemcell'])
-      stemcell.add_stemcell_models
-      stemcell.deployment_model = instance_model.deployment
       # FIXME: cpi is not passed here (otherwise, we would need to parse the
       # CPI using the cloud config & cloud manifest parser) it is not a
       # problem, since all interactions with cpi go over cloud factory (which
@@ -148,15 +146,32 @@ module Bosh::Director
       )
 
       variables_interpolator = Bosh::Director::ConfigServer::VariablesInterpolator.new
+
+      # begin: InstanceRepository.fetch_obsolete_existing
+      # this section seems very similar and could probably be refactored to use it
+      # fetch_obsolete_existing might better be renamed to fetch_existing if it's going to represent an instance from an exact set of existing state
+
+      # TODO: the deploy process for a `resurrect` instance would need to be sure to use `fetch_existing` rather than the
+      #       normal `InstanceRepository.fetch_existing`? the caller might have access to the `resurrect` action/options to
+      #       make it conditional between the two methods?
+
+      stemcell = DeploymentPlan::Stemcell.parse(instance_model.spec['stemcell'])
+      stemcell.add_stemcell_models
+      stemcell.deployment_model = instance_model.deployment
+
       instance_from_model = DeploymentPlan::Instance.new(
         instance_model.job,
         instance_model.index,
         instance_model.state,
+        # difference: fetch_obsolete_existing currently regenerates cloud_properties
+        # perhaps it could use instance_model.cloud_properties_hash and then we could reuse it?
         instance_model.cloud_properties_hash,
         stemcell,
         DeploymentPlan::Env.new(instance_model.vm_env),
         false,
         instance_model.deployment,
+        # bug here: should not be passing spec; it should be the virtual state (started or stopped)
+        # probably should be hard-coded to started if we're supposed to be resurrecting it
         instance_model.spec,
         availability_zone,
         @logger,
@@ -164,9 +179,14 @@ module Bosh::Director
       )
       instance_from_model.bind_existing_instance_model(instance_model)
 
+      # end: InstanceRepository.fetch_obsolete_existing?
+
+      # ResurrectionInstancePlan inherits from InstancePlan. In the future only the generic instancePlan could exist and used here.
+      # We are positive that ResurrectionInstancePlan could be removed and InstancePlan handles the different cases.
       DeploymentPlan::ResurrectionInstancePlan.new(
         existing_instance: instance_model,
         instance: instance_from_model,
+        # instead of an empty desired instance,
         desired_instance: DeploymentPlan::DesiredInstance.new,
         recreate_deployment: true,
         tags: instance_from_model.deployment_model.tags,
