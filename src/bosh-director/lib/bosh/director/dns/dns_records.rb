@@ -7,6 +7,7 @@ module Bosh::Director
       @record_keys = %w[
         id num_id instance_group group_ids az az_id network
         network_id deployment ip domain agent_id instance_index
+        link_mappings
       ]
       @record_infos = []
       @records = []
@@ -17,9 +18,11 @@ module Bosh::Director
     def add_record(record_hash)
       add_hosts_records(record_hash)
 
-      links_group_ids = record_hash[:links]&.map do |link|
+      link_mappings = record_hash[:links]&.map do |link|
         encoded_id_for_link(link.symbolize_keys[:name], record_hash[:deployment_name])
       end
+
+      links_group_ids = link_mappings.map(&:first)
 
       @record_infos << [
         record_hash[:instance_id],
@@ -38,6 +41,7 @@ module Bosh::Director
         record_hash[:domain],
         record_hash[:agent_id],
         record_hash[:index],
+        link_mappings,
       ]
     end
 
@@ -57,11 +61,15 @@ module Bosh::Director
     private
 
     def encoded_id_for_link(link_name, deployment_name)
-      @dns_query_encoder.id_for_group_tuple(
-        Models::LocalDnsEncodedGroup::Types::LINK,
+      [
+        @dns_query_encoder.id_for_group_tuple(
+          Models::LocalDnsEncodedGroup::Types::LINK,
+          link_name,
+          deployment_name,
+        ),
         link_name,
         deployment_name,
-      )
+      ]
     end
 
     def encoded_id_for_instance_group(instance_group_name, deployment_name)
