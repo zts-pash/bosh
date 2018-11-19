@@ -2,59 +2,54 @@
 groups:
   - name: bosh
     jobs:
-      - unit-2.4
-      - unit-2.4-mysql
-      - unit-2.4-postgres
-      - unit-2.4-db-migrations-rds
-      - blobstore-client-integration
-      - integration-postgres-gocli-sha2
-      - integration-mysql-gocli-sha1
-      - integration-db-tls-postgres
+      - unit-postgres
       - integration-db-tls-postgres-hotswap
       - integration-db-tls-mysql
+
+      - blobstore-client-integration
       - fuzz-tests
       - candidate-release
-      - compile-bosh-dev-release-trusty
       - compile-bosh-dev-release-xenial
       - bats-centos
-      - bats-ubuntu-trusty
       - bats-ubuntu-xenial
-      - bats-ubuntu-trusty-aws
-      - brats-ubuntu-trusty
+      - bats-ubuntu-xenial-aws
       - brats-ubuntu-xenial
-      - bbr-ubuntu-trusty
       - bbr-ubuntu-xenial
       - upgrade-tests
       - blobstore-performance
+      - builds-all-passed
       - deploy-acceptance-env
       - delivery
 
+      - unit-sqlite
+      - unit-mysql
+      - unit-db-migrations-rds
+      - integration-postgres-gocli-sha2
+      - integration-mysql-gocli-sha1
+      - integration-db-tls-postgres
+
   - name: mysql
     jobs:
-      - unit-2.4-mysql
-      - unit-2.4-db-migrations-rds
+      - unit-mysql
+      - unit-db-migrations-rds
       - integration-mysql-gocli-sha1
 
   - name: postgres
     jobs:
-      - unit-2.4-postgres
-      - unit-2.4-db-migrations-rds
+      - unit-postgres
+      - unit-db-migrations-rds
       - integration-db-tls-postgres-hotswap
 
   - name: bats
     jobs:
       - bats-centos
-      - bats-ubuntu-trusty
       - bats-ubuntu-xenial
-      - bats-ubuntu-trusty-aws
+      - bats-ubuntu-xenial-aws
 
   - name: brats/bbr
     jobs:
-      - compile-bbr-trusty
       - compile-bbr-xenial
-      - brats-ubuntu-trusty
       - brats-ubuntu-xenial
-      - bbr-ubuntu-trusty
       - bbr-ubuntu-xenial
 
   # - name: version
@@ -149,12 +144,14 @@ shared:
     file: bosh-src/ci/bats/tasks/destroy-director.yml
 
 jobs:
-  - name: unit-2.4
+  - name: unit-sqlite
     public: true
     serial: true
     build_logs_to_retain: 250
     plan:
-      - { get: bosh-src, trigger: true }
+      - get: bosh-src
+        passed: [builds-all-passed]
+        trigger: true
 
       - task: test
         timeout: 2h
@@ -162,13 +159,14 @@ jobs:
         params:
           DB: sqlite
 
-  - name: unit-2.4-mysql
+  - name: unit-mysql
     public: true
     serial: true
     build_logs_to_retain: 250
     plan:
       - aggregate:
         - get: bosh-src
+          passed: [builds-all-passed]
           trigger: true
         - get: bosh-main-mysql-5.5
         - get: bosh-main-mysql-5.6
@@ -196,7 +194,7 @@ jobs:
           params:
             DB: mysql
 
-  - name: unit-2.4-postgres
+  - name: unit-postgres
     public: true
     serial: true
     build_logs_to_retain: 250
@@ -251,13 +249,15 @@ jobs:
             DB: postgresql
             DB_VERSION: 10
 
-  - name: unit-2.4-db-migrations-rds
+  - name: unit-db-migrations-rds
     serial: true
     build_logs_to_retain: 250
     plan:
       - put: rds-pool
         params: {acquire: true}
-      - { get: bosh-src, trigger: true }
+      - get: bosh-src
+        passed: [builds-all-passed]
+        trigger: true
       - aggregate:
         - task: test-mysql-rds
           timeout: 3h
@@ -328,6 +328,7 @@ jobs:
     plan:
       - aggregate:
         - get: bosh-src
+          passed: [builds-all-passed]
           trigger: true
         - get: bosh-cli
           trigger: true
@@ -356,6 +357,7 @@ jobs:
     plan:
       - aggregate:
         - get: bosh-src
+          passed: [builds-all-passed]
           trigger: true
         - get: bosh-cli
           trigger: true
@@ -383,6 +385,7 @@ jobs:
     plan:
       - aggregate:
         - get: bosh-src
+          passed: [builds-all-passed]
           trigger: true
         - get: bosh-cli
           trigger: true
@@ -541,40 +544,17 @@ jobs:
       params:
         file: "compiled-release/*.tgz"
 
-  - name: compile-bbr-trusty
-    plan:
-    - aggregate:
-      - get: bosh-src
-      - get: release
-        resource: bbr-sdk-release
-        trigger: true
-      - get: stemcell
-        resource: warden-ubuntu-trusty
-        trigger: true
-    - task: export-release
-      file: bosh-src/ci/tasks/export-release.yml
-      privileged: true
-    - put: bbr-compiled-trusty
-      params:
-        file: "compiled-release/*.tgz"
-
   - name: candidate-release
     plan:
     - get: bosh-src
       trigger: true
       passed:
-      - unit-2.4
-      - unit-2.4-mysql
-      - unit-2.4-postgres
-      - unit-2.4-db-migrations-rds
-      - integration-mysql-gocli-sha1
-      - integration-postgres-gocli-sha2
+      - unit-postgres
       - blobstore-client-integration
       - fuzz-tests
       - upgrade-tests
       - blobstore-performance
       - integration-db-tls-mysql
-      - integration-db-tls-postgres
       - integration-db-tls-postgres-hotswap
     - get: bosh-cli
     - put: version
@@ -602,25 +582,6 @@ jobs:
       file: bosh-src/ci/tasks/export-release.yml
       privileged: true
     - put: bosh-compiled-candidate-xenial
-      params:
-        file: "compiled-release/*.tgz"
-
-  - name: compile-bosh-dev-release-trusty
-    plan:
-    - aggregate:
-      - get: bosh-src
-      - get: release
-        resource: bosh-candidate-release-tarballs
-        passed:
-        - candidate-release
-        trigger: true
-      - get: stemcell
-        resource: warden-ubuntu-trusty
-        trigger: true
-    - task: export-release
-      file: bosh-src/ci/tasks/export-release.yml
-      privileged: true
-    - put: bosh-compiled-candidate-trusty
       params:
         file: "compiled-release/*.tgz"
 
@@ -654,44 +615,6 @@ jobs:
         - <<: *prepare-bats-config
           params:
             STEMCELL_NAME: bosh-vsphere-esxi-centos-7-go_agent
-        - <<: *run-bats
-        ensure:
-          do:
-            - <<: *teardown
-      ensure:
-        do:
-        - {put: environment, params: {release: environment}}
-
-  - name: bats-ubuntu-trusty
-    serial: true
-    plan:
-    - do:
-      - aggregate:
-        - get: bosh-candidate-release-tarballs
-          passed:
-          - candidate-release
-        - get: bosh-release
-          resource: bosh-compiled-candidate-xenial
-          trigger: true
-          passed:
-          - compile-bosh-dev-release-xenial
-        - get: cpi-release
-        - get: stemcell
-          resource: vsphere-esxi-ubuntu-trusty
-        - get: bosh-cli
-        - get: bats
-        - get: bosh-deployment
-        - get: bosh-src
-          passed:
-            - candidate-release
-      - put: environment
-        params:
-          acquire: true
-      - do:
-        - <<: *deploy-director
-        - <<: *prepare-bats-config
-          params:
-            STEMCELL_NAME: bosh-vsphere-esxi-ubuntu-trusty-go_agent
         - <<: *run-bats
         ensure:
           do:
@@ -738,13 +661,13 @@ jobs:
         do:
         - {put: environment, params: {release: environment}}
 
-  - name: bats-ubuntu-trusty-aws
+  - name: bats-ubuntu-xenial-aws
     serial: true
     plan:
     - do:
       - aggregate:
         - get: stemcell
-          resource: aws-xen-hvm-ubuntu-trusty
+          resource: aws-xen-hvm-ubuntu-xenial
           trigger: true
         - get: bosh-candidate-release-tarballs
           passed:
@@ -764,7 +687,7 @@ jobs:
         params:
           terraform_source: bosh-src/ci/bats/iaas/aws/terraform
           delete_on_failure: true
-          env_name: bats-ubuntu-trusty-aws-((branch_name))
+          env_name: bats-ubuntu-xenial-aws-((branch_name))
       - do:
         - task: deploy-director
           file: bosh-src/ci/bats/tasks/deploy-director.yml
@@ -783,7 +706,7 @@ jobs:
           input_mapping:
             environment: terraform
           params:
-            STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+            STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-xenial-go_agent
         - task: run-bats
           file: bats/ci/tasks/run-bats.yml
         ensure:
@@ -803,213 +726,10 @@ jobs:
             - put: terraform
               params:
                 terraform_source: bosh-src/ci/bats/iaas/aws/terraform
-                env_name: bats-ubuntu-trusty-aws-((branch_name))
+                env_name: bats-ubuntu-xenial-aws-((branch_name))
                 action: destroy
               get_params:
                 action: destroy
-
-  - name: brats-ubuntu-trusty
-    serial: true
-    plan:
-    - aggregate:
-      - get: bosh-src
-        passed:
-        - candidate-release
-      - get: bosh-dns-release
-      - get: stemcell
-        resource: warden-ubuntu-trusty
-      - get: bosh-candidate-release-tarballs
-        passed:
-        - candidate-release
-      - get: bosh-release
-        resource: bosh-compiled-candidate-trusty
-        trigger: true
-        passed:
-        - compile-bosh-dev-release-trusty
-    - do:
-      - put: brats-terraform
-        attempts: 2
-        params:
-          env_name: brats-ubuntu-trusty-((branch_name))
-          terraform_source: bosh-src/ci/brats
-          vars:
-            rds_mysql_username: ((brats-rds-mysql-external-db-user))
-            rds_mysql_password: ((brats-rds-mysql-external-db-password))
-            rds_mysql_databasename: ((brats-rds-mysql-external-db-name))
-            rds_postgres_username: ((brats-rds-postgres-external-db-user))
-            rds_postgres_password: ((brats-rds-postgres-external-db-password))
-            rds_postgres_databasename: ((brats-rds-postgres-external-db-name))
-            aws_access_key_id: ((bosh-ci-database-terraform-rds-aws-access-key-id))
-            aws_secret_access_key: ((bosh-ci-database-terraform-rds-aws-secret-access-key))
-            gcp_mysql_username: ((brats-gcp-mysql-external-db-user))
-            gcp_mysql_password: ((brats-gcp-mysql-external-db-password))
-            gcp_mysql_databasename: ((brats-gcp-mysql-external-db-name))
-            gcp_postgres_username: ((brats-gcp-postgres-external-db-user))
-            gcp_postgres_password: ((brats-gcp-postgres-external-db-password))
-            gcp_postgres_databasename: ((brats-gcp-postgres-external-db-name))
-          env:
-            GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-      - task: create-ssl-certificates
-        file: bosh-src/ci/tasks/create-brats-ssl-certificates.yml
-        attempts: 2
-        params:
-          GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-        input_mapping:
-          terraform-output: brats-terraform
-      - task: test-brats
-        file: bosh-src/ci/tasks/test-brats.yml
-        tags: ["worker-brats"]
-        input_mapping:
-          database-metadata: brats-terraform
-        privileged: true
-        params: &brats-dbs-params
-          RDS_MYSQL_EXTERNAL_DB_USER: ((brats-rds-mysql-external-db-user))
-          RDS_MYSQL_EXTERNAL_DB_PASSWORD: ((brats-rds-mysql-external-db-password))
-          RDS_MYSQL_EXTERNAL_DB_NAME: ((brats-rds-mysql-external-db-name))
-          RDS_POSTGRES_EXTERNAL_DB_USER: ((brats-rds-postgres-external-db-user))
-          RDS_POSTGRES_EXTERNAL_DB_PASSWORD: ((brats-rds-postgres-external-db-password))
-          RDS_POSTGRES_EXTERNAL_DB_NAME: ((brats-rds-postgres-external-db-name))
-          GCP_MYSQL_EXTERNAL_DB_USER: ((brats-gcp-mysql-external-db-user))
-          GCP_MYSQL_EXTERNAL_DB_PASSWORD: ((brats-gcp-mysql-external-db-password))
-          GCP_MYSQL_EXTERNAL_DB_NAME: ((brats-gcp-mysql-external-db-name))
-          GCP_POSTGRES_EXTERNAL_DB_USER: ((brats-gcp-postgres-external-db-user))
-          GCP_POSTGRES_EXTERNAL_DB_PASSWORD: ((brats-gcp-postgres-external-db-password))
-          GCP_POSTGRES_EXTERNAL_DB_NAME: ((brats-gcp-postgres-external-db-name))
-          STEMCELL_OS: ubuntu-trusty
-      ensure:
-        do:
-        - task: cleanup-external-dbs
-          file: bosh-src/ci/tasks/test-brats-db-cleanup.yml
-          input_mapping:
-            database-metadata: brats-terraform
-          params: *brats-dbs-params
-        - put: brats-terraform
-          get_params: { action: destroy }
-          params:
-            env_name: brats-ubuntu-trusty-((branch_name))
-            terraform_source: bosh-src/ci/brats
-            action: destroy
-            vars:
-              rds_mysql_username: ((brats-rds-mysql-external-db-user))
-              rds_mysql_password: ((brats-rds-mysql-external-db-password))
-              rds_mysql_databasename: ((brats-rds-mysql-external-db-name))
-              rds_postgres_username: ((brats-rds-postgres-external-db-user))
-              rds_postgres_password: ((brats-rds-postgres-external-db-password))
-              rds_postgres_databasename: ((brats-rds-postgres-external-db-name))
-              aws_access_key_id: ((bosh-ci-database-terraform-rds-aws-access-key-id))
-              aws_secret_access_key: ((bosh-ci-database-terraform-rds-aws-secret-access-key))
-              gcp_mysql_username: ((brats-gcp-mysql-external-db-user))
-              gcp_mysql_password: ((brats-gcp-mysql-external-db-password))
-              gcp_mysql_databasename: ((brats-gcp-mysql-external-db-name))
-              gcp_postgres_username: ((brats-gcp-postgres-external-db-user))
-              gcp_postgres_password: ((brats-gcp-postgres-external-db-password))
-              gcp_postgres_databasename: ((brats-gcp-postgres-external-db-name))
-            env:
-              GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-            action: destroy
-
-  - name: bbr-ubuntu-trusty
-    serial: true
-    plan:
-    - aggregate:
-      - get: bosh-src
-        passed:
-        - candidate-release
-      - get: stemcell
-        resource: warden-ubuntu-trusty
-        passed: [compile-bbr-trusty]
-      - get: bosh-candidate-release-tarballs
-        passed:
-        - candidate-release
-      - get: bosh-release
-        resource: bosh-compiled-candidate-trusty
-        trigger: true
-        passed:
-        - compile-bosh-dev-release-trusty
-      - get: bbr-compiled-release
-        resource: bbr-compiled-trusty
-        passed: [compile-bbr-trusty]
-    - do:
-      - put: brats-terraform
-        attempts: 2
-        params:
-          env_name: bbr-ubuntu-trusty-((branch_name))
-          terraform_source: bosh-src/ci/brats
-          vars:
-            rds_mysql_username: ((brats-rds-mysql-external-db-user))
-            rds_mysql_password: ((brats-rds-mysql-external-db-password))
-            rds_mysql_databasename: ((brats-rds-mysql-external-db-name))
-            rds_postgres_username: ((brats-rds-postgres-external-db-user))
-            rds_postgres_password: ((brats-rds-postgres-external-db-password))
-            rds_postgres_databasename: ((brats-rds-postgres-external-db-name))
-            aws_access_key_id: ((bosh-ci-database-terraform-rds-aws-access-key-id))
-            aws_secret_access_key: ((bosh-ci-database-terraform-rds-aws-secret-access-key))
-            gcp_mysql_username: ((brats-gcp-mysql-external-db-user))
-            gcp_mysql_password: ((brats-gcp-mysql-external-db-password))
-            gcp_mysql_databasename: ((brats-gcp-mysql-external-db-name))
-            gcp_postgres_username: ((brats-gcp-postgres-external-db-user))
-            gcp_postgres_password: ((brats-gcp-postgres-external-db-password))
-            gcp_postgres_databasename: ((brats-gcp-postgres-external-db-name))
-          env:
-            GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-      - task: create-ssl-certificates
-        file: bosh-src/ci/tasks/create-brats-ssl-certificates.yml
-        attempts: 2
-        params:
-          GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-        input_mapping:
-          terraform-output: brats-terraform
-      - task: test-bbr
-        file: bosh-src/ci/tasks/test-bbr.yml
-        tags: ["worker-brats"]
-        input_mapping:
-          database-metadata: brats-terraform
-        privileged: true
-        params: &brats-dbs-params
-          RDS_MYSQL_EXTERNAL_DB_USER: ((brats-rds-mysql-external-db-user))
-          RDS_MYSQL_EXTERNAL_DB_PASSWORD: ((brats-rds-mysql-external-db-password))
-          RDS_MYSQL_EXTERNAL_DB_NAME: ((brats-rds-mysql-external-db-name))
-          RDS_POSTGRES_EXTERNAL_DB_USER: ((brats-rds-postgres-external-db-user))
-          RDS_POSTGRES_EXTERNAL_DB_PASSWORD: ((brats-rds-postgres-external-db-password))
-          RDS_POSTGRES_EXTERNAL_DB_NAME: ((brats-rds-postgres-external-db-name))
-          GCP_MYSQL_EXTERNAL_DB_USER: ((brats-gcp-mysql-external-db-user))
-          GCP_MYSQL_EXTERNAL_DB_PASSWORD: ((brats-gcp-mysql-external-db-password))
-          GCP_MYSQL_EXTERNAL_DB_NAME: ((brats-gcp-mysql-external-db-name))
-          GCP_POSTGRES_EXTERNAL_DB_USER: ((brats-gcp-postgres-external-db-user))
-          GCP_POSTGRES_EXTERNAL_DB_PASSWORD: ((brats-gcp-postgres-external-db-password))
-          GCP_POSTGRES_EXTERNAL_DB_NAME: ((brats-gcp-postgres-external-db-name))
-          STEMCELL_OS: ubuntu-trusty
-      ensure:
-        do:
-        - task: cleanup-external-dbs
-          file: bosh-src/ci/tasks/test-brats-db-cleanup.yml
-          input_mapping:
-            database-metadata: brats-terraform
-          params: *brats-dbs-params
-        - put: brats-terraform
-          get_params: { action: destroy }
-          params:
-            env_name: bbr-ubuntu-trusty-((branch_name))
-            terraform_source: bosh-src/ci/brats
-            action: destroy
-            vars:
-              rds_mysql_username: ((brats-rds-mysql-external-db-user))
-              rds_mysql_password: ((brats-rds-mysql-external-db-password))
-              rds_mysql_databasename: ((brats-rds-mysql-external-db-name))
-              rds_postgres_username: ((brats-rds-postgres-external-db-user))
-              rds_postgres_password: ((brats-rds-postgres-external-db-password))
-              rds_postgres_databasename: ((brats-rds-postgres-external-db-name))
-              aws_access_key_id: ((bosh-ci-database-terraform-rds-aws-access-key-id))
-              aws_secret_access_key: ((bosh-ci-database-terraform-rds-aws-secret-access-key))
-              gcp_mysql_username: ((brats-gcp-mysql-external-db-user))
-              gcp_mysql_password: ((brats-gcp-mysql-external-db-password))
-              gcp_mysql_databasename: ((brats-gcp-mysql-external-db-name))
-              gcp_postgres_username: ((brats-gcp-postgres-external-db-user))
-              gcp_postgres_password: ((brats-gcp-postgres-external-db-password))
-              gcp_postgres_databasename: ((brats-gcp-postgres-external-db-name))
-            env:
-              GOOGLE_CREDENTIALS: ((bosh-ci-database-terraform-google-credentials))
-            action: destroy
 
   - name: brats-ubuntu-xenial
     serial: true
@@ -1223,27 +943,13 @@ jobs:
         - get: zookeeper-release
         - get: bosh-deployment
         - get: stemcell
-          resource: google-kvm-ubuntu-trusty
+          resource: google-kvm-ubuntu-xenial
         - get: bosh-src
-          passed:
-          - bats-ubuntu-trusty
-          - bats-ubuntu-xenial
-          - bats-centos
-          - brats-ubuntu-trusty
-          - brats-ubuntu-xenial
-          - bbr-ubuntu-trusty
-          - bbr-ubuntu-xenial
+          passed: [builds-all-passed]
         - get: candidate-release
           resource: bosh-candidate-release-tarballs
           trigger: true
-          passed:
-          - bats-ubuntu-trusty
-          - bats-ubuntu-xenial
-          - bats-centos
-          - brats-ubuntu-trusty
-          - brats-ubuntu-xenial
-          - bbr-ubuntu-trusty
-          - bbr-ubuntu-xenial
+          passed: [builds-all-passed]
       - task: deploy-env
         file: bosh-src/ci/tasks/setup-env.yml
         params:
@@ -1256,20 +962,28 @@ jobs:
             repository: updated-bbl-state
             rebase: true
 
+  - name: builds-all-passed
+    plan:
+    - get: bosh-src
+      trigger: true
+      passed:
+      - bats-ubuntu-xenial
+      - bats-centos
+      - brats-ubuntu-xenial
+      - bbr-ubuntu-xenial
+    - get: bosh-candidate-release-tarballs
+      passed:
+      - bats-ubuntu-xenial
+      - bats-centos
+      - brats-ubuntu-xenial
+      - bbr-ubuntu-xenial
+
   - name: delivery
     plan:
-      - aggregate:
-        - get: bosh-src
-          version: every
-          trigger: true
-          passed:
-          - bats-ubuntu-trusty
-          - bats-ubuntu-xenial
-          - bats-centos
-          - brats-ubuntu-trusty
-          - brats-ubuntu-xenial
-          - bbr-ubuntu-trusty
-          - bbr-ubuntu-xenial
+      - get: bosh-src
+        version: every
+        trigger: true
+        passed: [builds-all-passed]
       - put: tracker-output
         params:
           repos:
@@ -1282,7 +996,6 @@ jobs:
         - get: bosh-src
           passed:
             - bats-centos
-            - bats-ubuntu-trusty
             - bats-ubuntu-xenial
         - get: bosh-src-latest
           resource: bosh-src
@@ -1420,26 +1133,10 @@ resources:
       secret_access_key: ((bosh-compiled-releases-aws-secret-access-key))
       regexp: "bosh-.*dev\\.(\\d+).*xenial.*.tgz"
 
-  - name: bosh-compiled-candidate-trusty
-    type: s3
-    source:
-      bucket: "bosh-compiled-candidate-tarballs"
-      access_key_id: ((bosh-compiled-releases-aws-access-key-id))
-      secret_access_key: ((bosh-compiled-releases-aws-secret-access-key))
-      regexp: "bosh-.*dev\\.(\\d+).*trusty.*.tgz"
-
   - name: bbr-sdk-release
     type: bosh-io-release
     source:
       repository:  cloudfoundry-incubator/backup-and-restore-sdk-release
-
-  - name: bbr-compiled-trusty
-    type: s3
-    source:
-      bucket: ((bbr_compiled_release_bucket))
-      access_key_id: ((candidate_release_access_key_id))
-      secret_access_key: ((candidate_release_secret_access_key))
-      regexp: "trusty/backup-and-restore-sdk-(.*).tgz"
 
   - name: bbr-compiled-xenial
     type: s3
@@ -1541,30 +1238,10 @@ resources:
       branch: master
       private_key: ((github_deployment_key__bosh-cpi-environments))
 
-  - name: vsphere-esxi-ubuntu-trusty
-    type: bosh-io-stemcell
-    source:
-      name: bosh-vsphere-esxi-ubuntu-trusty-go_agent
-
   - name: vsphere-esxi-ubuntu-xenial
     type: bosh-io-stemcell
     source:
       name: bosh-vsphere-esxi-ubuntu-xenial-go_agent
-
-  - name: google-kvm-ubuntu-trusty
-    type: bosh-io-stemcell
-    source:
-      name: bosh-google-kvm-ubuntu-trusty-go_agent
-
-  - name: aws-xen-hvm-ubuntu-trusty
-    type: bosh-io-stemcell
-    source:
-      name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-
-  - name: warden-ubuntu-trusty
-    type: bosh-io-stemcell
-    source:
-      name: bosh-warden-boshlite-ubuntu-trusty-go_agent
 
   - name: warden-ubuntu-xenial
     type: bosh-io-stemcell
@@ -1575,6 +1252,16 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-vsphere-esxi-centos-7-go_agent
+
+  - name: google-kvm-ubuntu-xenial
+    type: bosh-io-stemcell
+    source:
+      name: bosh-google-kvm-ubuntu-xenial-go_agent
+
+  - name: aws-xen-hvm-ubuntu-xenial
+    type: bosh-io-stemcell
+    source:
+      name: bosh-aws-xen-hvm-ubuntu-xenial-go_agent
 
   - name: cpi-release
     type: bosh-io-release
