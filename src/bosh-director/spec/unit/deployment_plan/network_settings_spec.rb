@@ -1,347 +1,230 @@
 require 'spec_helper'
 
-module Bosh::Director::DeploymentPlan
-  describe NetworkSettings do
-    let(:network_settings) do
-      NetworkSettings.new(
-        'fake-job',
-        'fake-deployment',
-        {'gateway' => 'net_a'},
-        reservations,
-        {'net_a' => {'ip' => '10.0.0.6', 'netmask' => '255.255.255.0', 'gateway' => '10.0.0.1'}},
-        az,
-        3,
-        'uuid-1',
-        'bosh1.tld',
-        use_short_dns_addresses,
-      )
-    end
-    let(:instance_group) do
-      instance_group = InstanceGroup.new(logger)
-      instance_group.name = 'fake-job'
-      instance_group
-    end
-
-    let(:az) { AvailabilityZone.new('az-1', {'foo' => 'bar'}) }
-    let(:reservations) do
-      reservation = Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, manual_network)
-      reservation.resolve_ip('10.0.0.6')
-      [reservation]
-    end
-    let(:manual_network) do
-      ManualNetwork.parse(
+module Bosh::Director
+  module DeploymentPlan
+    describe NetworkSettings do
+      let(:instance_group_name)     { double(:instance_group_name) }
+      let(:instance_id)             { double(:instance_id) }
+      let(:deployment_name)         { double(:deployment_name) }
+      let(:root_domain)             { double(:root_domain) }
+      let(:instance_index)          { 3 }
+      let(:use_short_dns_addresses) { double(:use_short_dns_addresses) }
+      let(:current_networks)        do
         {
-          'name' => 'net_a',
-          'dns' => ['1.2.3.4'],
-          'subnets' => [{
-            'range' => '10.0.0.1/24',
+          'net_a' => {
+            'ip' => '10.0.0.6',
+            'netmask' => '255.255.255.0',
             'gateway' => '10.0.0.1',
+          },
+          'net_b' => {
+            'ip' => '10.1.0.6',
+            'netmask' => '255.255.255.0',
+            'gateway' => '10.1.0.1',
+          },
+        }
+      end
+
+      subject(:network_settings) do
+        NetworkSettings.new(
+          availability_zone:    az,
+          current_networks:     current_networks,
+          default_network:      { 'gateway' => 'net_a' },
+          deployment_name:      deployment_name,
+          desired_reservations: reservations,
+          instance_group_name:  instance_group_name,
+          instance_id:          instance_id,
+          instance_index:       3,
+          root_domain:          root_domain,
+          feature_configured_dns_encoder:     feature_configured_dns_encoder,
+        )
+      end
+
+      let(:feature_configured_dns_encoder) { instance_double(FeatureConfiguredDNSEncoder) }
+
+      let(:instance_group) do
+        instance_group = InstanceGroup.new(logger)
+        instance_group.name = 'fake-job'
+        instance_group
+      end
+
+      let(:az) { AvailabilityZone.new('az-1', 'foo' => 'bar') }
+      let(:reservations) do
+        reservation_a = Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, manual_network_a)
+        reservation_a.resolve_ip('10.0.0.6')
+        reservation_b = Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, manual_network_b)
+        reservation_b.resolve_ip('10.1.0.6')
+        [reservation_a, reservation_b]
+      end
+
+      let(:manual_network_a) do
+        ManualNetwork.parse(
+          {
+            'name' => 'net_a',
             'dns' => ['1.2.3.4'],
-            'cloud_properties' => { 'foo' => 'bar' },
-          }],
-        },
-        [],
-        GlobalNetworkResolver.new(plan, [], logger),
-        logger,
-      )
-    end
+            'subnets' => [{
+              'range' => '10.0.0.1/24',
+              'gateway' => '10.0.0.1',
+              'dns' => ['1.2.3.4'],
+              'cloud_properties' => { 'foo' => 'bar' },
+            }],
+          },
+          [],
+          GlobalNetworkResolver.new(plan, [], logger),
+          logger,
+        )
+      end
 
-    let(:plan) { instance_double(Planner, using_global_networking?: true, name: 'fake-deployment') }
-    let(:use_short_dns_addresses) { false }
+      let(:manual_network_b) do
+        ManualNetwork.parse(
+          {
+            'name' => 'net_b',
+            'dns' => ['1.2.3.4'],
+            'subnets' => [{
+              'range' => '10.1.0.1/24',
+              'gateway' => '10.1.0.1',
+              'dns' => ['1.2.3.4'],
+              'cloud_properties' => { 'baz' => 'bam' },
+            }],
+          },
+          [],
+          GlobalNetworkResolver.new(plan, [], logger),
+          logger,
+        )
+      end
 
-    before do
-      allow_any_instance_of(Bosh::Director::DnsEncoder).to receive(:num_for_uuid)
-        .with('uuid-1').and_return('1')
-      allow_any_instance_of(Bosh::Director::DnsEncoder).to receive(:id_for_network)
-        .with('net_a').and_return('1')
-      allow_any_instance_of(Bosh::Director::DnsEncoder).to receive(:id_for_group_tuple)
-        .with('instance-group', 'fake-job', 'fake-deployment').and_return('1')
-    end
+      let(:plan) { instance_double(Planner, using_global_networking?: true, name: 'fake-deployment') }
+      let(:use_short_dns_addresses) { false }
 
-    describe '#to_hash' do
-      context 'dynamic network' do
-        let(:dynamic_network) do
-          subnets = [DynamicNetworkSubnet.new(['1.2.3.4'], {'foo' => 'bar'}, 'az-1')]
-          DynamicNetwork.new('net_a', subnets, logger)
-        end
+      describe '#to_hash' do
+        context 'dynamic network' do
+          let(:dynamic_network) do
+            subnets = [DynamicNetworkSubnet.new(['1.2.3.4'], { 'foo' => 'bar' }, 'az-1')]
+            DynamicNetwork.new('net_a', subnets, logger)
+          end
 
-        let(:reservations) { [Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)] }
+          let(:reservations) { [Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)] }
 
-        it 'returns the network settings plus current IP, Netmask & Gateway from agent state' do
-          expect(network_settings.to_hash).to eql(
-            {
+          it 'returns the network settings plus current IP, Netmask & Gateway from agent state' do
+            expect(network_settings.to_hash).to eql(
               'net_a' => {
                 'type' => 'dynamic',
                 'cloud_properties' => {
-                  'foo' => 'bar'
+                  'foo' => 'bar',
                 },
                 'dns' => ['1.2.3.4'],
                 'default' => ['gateway'],
                 'ip' => '10.0.0.6',
                 'netmask' => '255.255.255.0',
-                'gateway' => '10.0.0.1'}
-            })
+                'gateway' => '10.0.0.1',
+              },
+            )
+          end
         end
       end
 
-      context 'manual network' do
+      describe '#dns_record_info' do
+        before do
+          allow(DnsNameGenerator).to receive(:dns_record_name).with(
+            instance_index,
+            instance_group_name,
+            'net_a',
+            deployment_name,
+            root_domain,
+          ).and_return(index_dns_name_a)
+          allow(DnsNameGenerator).to receive(:dns_record_name).with(
+            instance_id,
+            instance_group_name,
+            'net_a',
+            deployment_name,
+            root_domain,
+          ).and_return(id_dns_name_a)
+        end
+
+        before do
+          allow(DnsNameGenerator).to receive(:dns_record_name).with(
+            instance_index,
+            instance_group_name,
+            'net_b',
+            deployment_name,
+            root_domain,
+          ).and_return(index_dns_name_b)
+          allow(DnsNameGenerator).to receive(:dns_record_name).with(
+            instance_id,
+            instance_group_name,
+            'net_b',
+            deployment_name,
+            root_domain,
+          ).and_return(id_dns_name_b)
+        end
+
+        let(:index_dns_name_a) { Sham.name }
+        let(:id_dns_name_a)    { Sham.name }
+        let(:index_dns_name_b) { Sham.name }
+        let(:id_dns_name_b)    { Sham.name }
+
+        it 'includes both id and uuid records' do
+          expect(network_settings.dns_record_info).to eq(
+            id_dns_name_a    => '10.0.0.6',
+            index_dns_name_a => '10.0.0.6',
+            id_dns_name_b    => '10.1.0.6',
+            index_dns_name_b => '10.1.0.6',
+          )
+        end
+      end
+
+
+      context 'DNS encoder' do
+        let(:link_group_name)  { double(:link_group_name) }
+        let(:prefer_dns_entry) { double(:prefer_dns_entry) }
+        let(:use_link_address) { double(:use_link_address) }
+        let(:encoded_net_a)    { double(:encoded_net_a) }
+        let(:encoded_net_b)    { double(:encoded_net_b) }
+
+        before do
+          allow(FeatureConfiguredDNSEncoder).to receive(:new).with(
+            root_domain:             root_domain,
+            deployment_name:         deployment_name,
+            use_link_address:        use_link_address,
+            use_short_dns_addresses: use_short_dns_addresses,
+          ).and_return(feature_configured_dns_encoder)
+        end
+
+        let(:feature_configured_dns_encoder) { instance_double(FeatureConfiguredDNSEncoder) }
+
+        before do
+          allow(feature_configured_dns_encoder).to receive(:encode).with(
+            instance_group_name:     instance_group_name,
+            instance_id:             instance_id,
+            prefer_dns_entry:        prefer_dns_entry,
+            link_group_name:         link_group_name,
+            network_ip:              '10.0.0.6',
+            network_name:            'net_a',
+            network_type:            'manual',
+          ).and_return encoded_net_a
+
+          allow(feature_configured_dns_encoder).to receive(:encode).with(
+            instance_id:             instance_id,
+            instance_group_name:     instance_group_name,
+            prefer_dns_entry:        prefer_dns_entry,
+            link_group_name:         link_group_name,
+            network_ip:              '10.1.0.6',
+            network_name:            'net_b',
+            network_type:            'manual',
+          ).and_return encoded_net_b
+        end
+
         describe '#network_address' do
-          let(:prefer_dns_addresses) { true }
-          it 'returns the ip address for manual networks on the instance' do
-            expect(network_settings.network_address(prefer_dns_addresses)).to eq('10.0.0.6')
-          end
-        end
-      end
-    end
-
-    describe '#network_address' do
-      context 'when prefer_dns_entry is set to true' do
-        let (:prefer_dns_entry) {true}
-
-        context 'when it is a manual network' do
-          context 'and local dns is disabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(false)
-            end
-
-            it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
-            end
-          end
-
-          context 'when local dns is enabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-            end
-
-            it 'returns the dns record for that network' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
-            end
-
-            context 'when use_short_dns_addresses is true' do
-              let(:use_short_dns_addresses) { true }
-
-              it 'returns the short dns address' do
-                expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
-              end
-            end
+          it 'returns the address for the default network' do
+            expect(network_settings.network_address(link_group_name, prefer_dns_entry)).to eq(encoded_net_a)
           end
         end
 
-        context 'when it is a dynamic network' do
-          let(:dynamic_network) do
-            subnets = [DynamicNetworkSubnet.new(['1.2.3.4'], {'foo' => 'bar'}, 'az-1')]
-            DynamicNetwork.new('net_a', subnets, logger)
-          end
-          let(:reservations) {[Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)]}
-
-          context 'when local dns is disabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(false)
-            end
-
-            it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
-            end
-          end
-
-          context 'when local dns is enabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-            end
-
-            it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
-            end
-          end
-
-          context 'when use_short_dns_addresses is true' do
-            let(:use_short_dns_addresses) { true }
-            it 'returns the short dns address' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('q-m1n1s0.q-g1.bosh1.tld')
-            end
-          end
-        end
-      end
-
-      context 'when addressable is defined for a network' do
-        let(:net_a) do
-          {'ip' => '10.0.0.6', 'netmask' => '255.255.255.0', 'gateway' => '10.0.0.1'}
-        end
-
-        let(:net_public) do
-          {'ip' => '10.0.0.7'}
-        end
-
-        let(:reservation) do
-          network = ManualNetwork.parse(
-            {
-              'name' => 'net_public',
-              'dns' => ['1.2.3.4'],
-              'subnets' => [{
-                              'range' => '10.0.0.0/24',
-                              'gateway' => '10.0.0.1',
-                              'dns' => ['1.2.3.4'],
-                              'cloud_properties' => {'foo' => 'bar'}
-                            }
-              ]
-            },
-            [],
-            GlobalNetworkResolver.new(plan, [], logger),
-            logger
-          )
-          Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, network)
-        end
-
-        let(:reservations) do
-          reservation.resolve_ip('10.0.0.7')
-          [reservation]
-        end
-
-        let(:network_settings) do
-          NetworkSettings.new(
-            'fake-job',
-            'fake-deployment',
-            {'gateway' => 'net_a', 'addressable' => 'net_public'},
-            reservations,
-            {'net_a' => net_a, 'net_public' => net_public},
-            az,
-            3,
-            'uuid-1',
-            'bosh1.tld',
-            false
-          )
-        end
-
-
-        it 'returns the ip address of addressable network' do
-          expect(network_settings.network_address(false)).to eq("10.0.0.7")
-        end
-
-        it 'returns the dns address of addressable network' do
-          allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-          expect(network_settings.network_address(true)).to eq('uuid-1.fake-job.net-public.fake-deployment.bosh1.tld')
-        end
-      end
-
-      context 'when prefer_dns_entry is set to false' do
-        let (:prefer_dns_entry) {false}
-
-        context 'when it is a manual network' do
-          context 'and local dns is disabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(false)
-            end
-
-            it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
-            end
-          end
-
-          context 'when local dns is enabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-            end
-
-            it 'returns the ip address for the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('10.0.0.6')
-            end
-          end
-        end
-
-        context 'when it is a dynamic network' do
-          let(:dynamic_network) do
-            subnets = [DynamicNetworkSubnet.new(['1.2.3.4'], {'foo' => 'bar'}, 'az-1')]
-            DynamicNetwork.new('net_a', subnets, logger)
-          end
-          let(:reservations) {[Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)]}
-
-          context 'when local dns is disabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(false)
-            end
-
-            it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
-            end
-          end
-
-          context 'when local dns is enabled' do
-            before do
-              allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-            end
-
-            it 'returns the dns record name of the instance' do
-              expect(network_settings.network_address(prefer_dns_entry)).to eq('uuid-1.fake-job.net-a.fake-deployment.bosh1.tld')
-            end
-          end
-        end
-      end
-    end
-
-    describe '#dns_record_info' do
-      it 'includes both id and uuid records' do
-        expect(network_settings.dns_record_info).to eq({
-          '3.fake-job.net-a.fake-deployment.bosh1.tld' => '10.0.0.6',
-          'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld' => '10.0.0.6',
-        })
-      end
-    end
-
-    describe '#network_addresses' do
-      context 'dynamic network' do
-        let(:dynamic_network) do
-          subnets = [DynamicNetworkSubnet.new(['1.2.3.4'], {'foo' => 'bar'}, 'az-1')]
-          DynamicNetwork.new('net_a', subnets, logger)
-        end
-
-        let(:reservations) {[Bosh::Director::DesiredNetworkReservation.new_dynamic(nil, dynamic_network)]}
-        context 'when DNS entries are requested' do
-          it 'includes the network name and domain record' do
-            expect(network_settings.network_addresses(true)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
-          end
-        end
-        context 'when DNS entries are NOT requested' do
-          it 'still includes the network name and domain record' do
-            expect(network_settings.network_addresses(false)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld', })
-          end
-        end
-      end
-
-      context 'when network is manual' do
-        context 'and local dns is disabled' do
-          before do
-            allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(false)
-          end
-
-          context 'and DNS entries are requested' do
-            it 'includes the network name and ip' do
-              expect(network_settings.network_addresses(true)).to eq({'net_a' => '10.0.0.6'})
-            end
-          end
-
-          context 'and DNS entries are NOT requested' do
-            it 'includes the network name and ip' do
-              expect(network_settings.network_addresses(false)).to eq({'net_a' => '10.0.0.6'})
-            end
-          end
-        end
-
-        context 'and local dns is enabled' do
-          before do
-            allow(Bosh::Director::Config).to receive(:local_dns_enabled?).and_return(true)
-          end
-
-          context 'and DNS entries are requested' do
-            it 'includes the network name dns record' do
-              expect(network_settings.network_addresses(true)).to eq({'net_a' => 'uuid-1.fake-job.net-a.fake-deployment.bosh1.tld'})
-            end
-          end
-
-          context 'and DNS entries are NOT requested' do
-            it 'includes the network name dns record' do
-              expect(network_settings.network_addresses(false)).to eq({'net_a' => '10.0.0.6'})
-            end
+        describe '#network_addresses' do
+          it 'returns network_addresses for all networks for the instance' do
+            expect(network_settings.network_addresses(link_group_name, prefer_dns_entry)).to eq(
+              'net_a' => encoded_net_a,
+              'net_b' => encoded_net_b,
+            )
           end
         end
       end

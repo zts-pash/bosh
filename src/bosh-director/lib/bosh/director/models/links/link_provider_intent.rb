@@ -10,5 +10,12 @@ module Bosh::Director::Models::Links
                            :type
                          ]
     end
+
+    def group_name
+      link_name = name || original_name
+      link_type = type
+
+      "#{link_name}-#{link_type}"
+    end
   end
 end

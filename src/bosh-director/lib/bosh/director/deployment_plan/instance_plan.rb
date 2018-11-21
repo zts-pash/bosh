@@ -283,17 +283,26 @@ module Bosh
                                  .reject(&:obsolete?)
                                  .map(&:reservation)
 
+          deployment_name = @instance.model.deployment.name
+
+          feature_configured_dns_encoder = FeatureConfiguredDNSEncoder.new(
+            root_domain: root_domain,
+            deployment_name: deployment_name,
+            use_link_address: false,
+            use_short_dns_addresses: @use_short_dns_addresses,
+          )
+
           DeploymentPlan::NetworkSettings.new(
-            @instance.instance_group_name,
-            @instance.model.deployment.name,
-            @desired_instance.instance_group.default_network,
-            desired_reservations,
-            @instance.current_networks,
-            @instance.availability_zone,
-            @instance.index,
-            @instance.uuid,
-            root_domain,
-            @use_short_dns_addresses,
+            instance_group_name:            @instance.instance_group_name,
+            deployment_name:                deployment_name,
+            default_network:                @desired_instance.instance_group.default_network,
+            desired_reservations:           desired_reservations,
+            current_networks:               @instance.current_networks,
+            availability_zone:              @instance.availability_zone,
+            instance_index:                 @instance.index,
+            instance_id:                    @instance.uuid,
+            root_domain:                    root_domain,
+            feature_configured_dns_encoder: feature_configured_dns_encoder,
           )
         end
 
@@ -302,7 +311,7 @@ module Bosh
         end
 
         def network_address
-          network_settings.network_address(@use_dns_addresses)
+          network_settings.network_address('', @use_dns_addresses)
         end
 
         # @param [Boolean] prefer_dns_entry Flag for using DNS entry when available.

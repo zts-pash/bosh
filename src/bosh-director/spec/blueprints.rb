@@ -26,6 +26,7 @@ Sham.define do
   type             { |index| "type #{index}" }
   sha1             { |index| "sha1-#{index}" }
   build            { |index| index }
+  domain           { |index| "domain-#{index}" }
   ip               do |index|
     octet = index % 255
     "#{octet}.#{octet}.#{octet}.#{octet}"

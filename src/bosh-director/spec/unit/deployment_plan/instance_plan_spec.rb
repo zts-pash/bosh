@@ -1455,22 +1455,23 @@ module Bosh::Director::DeploymentPlan
     describe '#network_address' do
       let(:network_plans) { [NetworkPlanner::Plan.new(reservation: reservation)] }
       let(:network_settings) { instance_double(Bosh::Director::DeploymentPlan::NetworkSettings) }
+      let(:feature_configured_dns_encoder) { instance_double(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder) }
+
+      before do
+        allow(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder).to receive(:new).with(
+          root_domain: 'bosh',
+          deployment_name: 'simple',
+          use_link_address: false,
+          use_short_dns_addresses: use_short_dns_addresses,
+        ).and_return feature_configured_dns_encoder
+      end
 
       context 'when use_short_dns_addresses is true' do
         let(:use_short_dns_addresses) { true }
 
         it 'forwards that option to the settings' do
           expect(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).with(
-            anything,
-            anything,
-            anything,
-            anything,
-            anything,
-            anything,
-            anything,
-            anything,
-            anything,
-            true,
+            include(feature_configured_dns_encoder: feature_configured_dns_encoder),
           )
 
           instance_plan.network_settings
@@ -1485,7 +1486,7 @@ module Bosh::Director::DeploymentPlan
         let(:use_dns_addresses) { false }
 
         it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with(use_dns_addresses)
+          expect(network_settings).to receive(:network_address).with('', use_dns_addresses)
           instance_plan.network_address
         end
       end
@@ -1494,7 +1495,7 @@ module Bosh::Director::DeploymentPlan
         let(:use_dns_addresses) { true }
 
         it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with(use_dns_addresses)
+          expect(network_settings).to receive(:network_address).with('', use_dns_addresses)
           instance_plan.network_address
         end
       end

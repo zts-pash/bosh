@@ -37,18 +37,20 @@ module Bosh
 
           let(:network_settings) do
             BD::DeploymentPlan::NetworkSettings.new(
-              instance_group.name,
-              'deployment_name',
-              { 'gateway' => 'name' },
-              [reservation],
-              {},
-              availability_zone,
-              5,
-              'uuid-1',
-              'bosh',
-              false,
+              instance_group_name:            instance_group.name,
+              deployment_name:                'deployment_name',
+              default_network:                { 'gateway' => 'name' },
+              desired_reservations:           [reservation],
+              current_networks:               {},
+              availability_zone:              availability_zone,
+              instance_index:                 5,
+              instance_id:                    'uuid-1',
+              root_domain:                    'bosh',
+              feature_configured_dns_encoder: feature_configured_dns_encoder,
             ).to_hash
           end
+
+          let(:feature_configured_dns_encoder) { double(BD::DeploymentPlan::FeatureConfiguredDNSEncoder) }
 
           let(:update_job) do
             instance_double(

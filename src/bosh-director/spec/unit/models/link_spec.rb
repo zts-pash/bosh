@@ -33,31 +33,23 @@ module Bosh::Director::Models::Links
     end
 
     describe '#group_name' do
-      subject(:link) { Link.make }
-
-      context 'when provider intent has a name and a type' do
-        before do
-          link.link_provider_intent = LinkProviderIntent.make(name: 'name', type: 'type')
-          link.save
-        end
-
-        it 'returns a combination of provider name and link type' do
-          expect(link.group_name).to eq('name-type')
-        end
+      subject(:link) do
+        link = Link.make(name: 'bar')
+        allow(link).to receive(:link_provider_intent).and_return(link_provider_intent)
+        link
       end
 
-      context 'when provider intent does not have a name' do
-        before do
-          link.link_provider_intent = LinkProviderIntent.make(name: nil, original_name: 'original_name', type: 'type')
-          link.save
-        end
+      let(:link_provider_intent) { double(LinkProviderIntent, group_name: 'foo') }
 
-        it 'returns a combination of provider original name and link type' do
-          expect(link.group_name).to eq('original_name-type')
-        end
+      it 'delegates to its LinkProviderIntent' do
+        expect(link.group_name).to eq('foo')
       end
 
       context 'when provider intent is not set' do
+        before do
+          allow(link).to receive(:link_provider_intent).and_return(nil)
+        end
+
         it 'returns blank' do
           expect(link.group_name).to eq('')
         end
