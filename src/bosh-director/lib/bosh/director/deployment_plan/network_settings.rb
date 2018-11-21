@@ -85,6 +85,19 @@ module Bosh::Director
         get_address(network_name, net_hash['type'], net_hash['ip'], link_group_name, prefer_dns_entry)
       end
 
+      def instance_group_network_address(prefer_dns_entry)
+        network_name = @default_network['addressable'] || @default_network['gateway']
+        net_hash = to_hash[network_name]
+        @feature_configured_dns_encoder.encode_instance_group_address(
+          prefer_dns_entry: prefer_dns_entry,
+          network_name: network_name,
+          network_type: net_hash['type'],
+          network_ip: net_hash['ip'],
+          instance_id: @instance_id,
+          instance_group_name: @instance_group_name,
+        )
+      end
+
       def network_addresses(link_group_name, prefer_dns_entry)
         network_addresses = {}
 

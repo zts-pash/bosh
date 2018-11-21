@@ -1466,37 +1466,36 @@ module Bosh::Director::DeploymentPlan
         ).and_return feature_configured_dns_encoder
       end
 
-      context 'when use_short_dns_addresses is true' do
-        let(:use_short_dns_addresses) { true }
-
-        it 'forwards that option to the settings' do
-          expect(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).with(
-            include(feature_configured_dns_encoder: feature_configured_dns_encoder),
-          )
-
-          instance_plan.network_settings
-        end
-      end
+      # TODO(ja,db): figure out an acceptable middle ground for doubles/booleans: this is gross
+      let(:use_short_dns_addresses) { double(:use_short_dns_addresses) }
+      let(:use_dns_addresses)       { double(:use_dns_addresses) }
 
       before do
         allow(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).and_return(network_settings)
       end
 
-      context 'when use_dns_addresses is FALSE' do
-        let(:use_dns_addresses) { false }
+      it 'creates NetworkSettings with the feature_configured_dns_encoder' do
+        expect(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).with(
+          include(feature_configured_dns_encoder: feature_configured_dns_encoder),
+        )
 
-        it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with('', use_dns_addresses)
-          instance_plan.network_address
+        instance_plan.network_settings
+      end
+
+      context 'when passed a link_group_name' do
+        it 'calls network_address with the link_group_name' do
+          expect(network_settings).to receive(:network_address)
+            .with('link-group-name', use_dns_addresses).and_return(:link_address)
+
+          expect(instance_plan.network_address(link_group_name: 'link-group-name')).to eq(:link_address)
         end
       end
 
-      context 'when use_dns_addresses is TRUE' do
-        let(:use_dns_addresses) { true }
+      context 'when not passed a link_group_type' do
+        it 'calls instance_group_network_address' do
+          expect(network_settings).to receive(:instance_group_network_address).with(use_dns_addresses).and_return(:ig_address)
 
-        it 'calls it with correct value' do
-          expect(network_settings).to receive(:network_address).with('', use_dns_addresses)
-          instance_plan.network_address
+          expect(instance_plan.network_address).to eq(:ig_address)
         end
       end
     end

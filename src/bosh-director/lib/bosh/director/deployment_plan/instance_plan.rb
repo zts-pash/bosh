@@ -27,6 +27,7 @@ module Bosh
           @skip_drain = skip_drain
           @recreate_deployment = recreate_deployment
           @recreate_persistent_disks = recreate_persistent_disks
+          # TODO(ja,db): it turns out that this is only used for #network_address; can we get rid of it?
           @use_dns_addresses = use_dns_addresses
           @use_short_dns_addresses = use_short_dns_addresses
           @logger = logger
@@ -285,6 +286,7 @@ module Bosh
 
           deployment_name = @instance.model.deployment.name
 
+          # TODO(ja,db): pass this in to the class constructor instead of creating it here
           feature_configured_dns_encoder = FeatureConfiguredDNSEncoder.new(
             root_domain: root_domain,
             deployment_name: deployment_name,
@@ -310,10 +312,13 @@ module Bosh
           network_settings.to_hash
         end
 
-        def network_address
-          network_settings.network_address('', @use_dns_addresses)
+        def network_address(link_group_name: nil)
+          return network_settings.network_address(link_group_name, @use_dns_addresses) if link_group_name
+
+          network_settings.instance_group_network_address(@use_dns_addresses)
         end
 
+        # TODO(ja,db): take the link_group_name here and pass it on to the network_settings call
         # @param [Boolean] prefer_dns_entry Flag for using DNS entry when available.
         # @return [Hash] A hash mapping network names to their associated address
         def network_addresses(prefer_dns_entry)

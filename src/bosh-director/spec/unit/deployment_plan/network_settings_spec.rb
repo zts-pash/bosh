@@ -178,6 +178,7 @@ module Bosh::Director
         let(:prefer_dns_entry) { double(:prefer_dns_entry) }
         let(:use_link_address) { double(:use_link_address) }
         let(:encoded_net_a)    { double(:encoded_net_a) }
+        let(:ig_encoded_net_a) { double(:ig_encoded_net_a) }
         let(:encoded_net_b)    { double(:encoded_net_b) }
 
         before do
@@ -202,6 +203,15 @@ module Bosh::Director
             network_type:            'manual',
           ).and_return encoded_net_a
 
+          allow(feature_configured_dns_encoder).to receive(:encode_instance_group_address).with(
+            instance_group_name:     instance_group_name,
+            instance_id:             instance_id,
+            prefer_dns_entry:        prefer_dns_entry,
+            network_ip:              '10.0.0.6',
+            network_name:            'net_a',
+            network_type:            'manual',
+          ).and_return ig_encoded_net_a
+
           allow(feature_configured_dns_encoder).to receive(:encode).with(
             instance_id:             instance_id,
             instance_group_name:     instance_group_name,
@@ -216,6 +226,10 @@ module Bosh::Director
         describe '#network_address' do
           it 'returns the address for the default network' do
             expect(network_settings.network_address(link_group_name, prefer_dns_entry)).to eq(encoded_net_a)
+          end
+
+          it 'returns the instance_group address for the default network' do
+            expect(network_settings.instance_group_network_address(prefer_dns_entry)).to eq(ig_encoded_net_a)
           end
         end
 

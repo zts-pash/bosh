@@ -123,6 +123,28 @@ module Bosh::Director
                   ),
                 ).to eq(:encoded)
               end
+
+              it 'should encode the instance_group_name for encode_instance_group_address' do
+                allow(local_dns_encoder).to receive(:encode_query).with(
+                  group_type: Models::LocalDnsEncodedGroup::Types::INSTANCE_GROUP,
+                  group_name: instance_group_name,
+                  root_domain: root_domain,
+                  default_network: network_name,
+                  deployment_name: deployment_name,
+                  uuid: instance_id,
+                ).and_return(:encoded)
+
+                expect(
+                  subject.encode_instance_group_address(
+                    prefer_dns_entry: prefer_dns_entry,
+                    network_name: network_name,
+                    network_type: network_type,
+                    instance_group_name: instance_group_name,
+                    instance_id: instance_id,
+                    network_ip: network_ip,
+                  ),
+                ).to eq(:encoded)
+              end
             end
 
             context 'when use_link_address is false' do
@@ -169,6 +191,19 @@ module Bosh::Director
                 ),
               ).to eq(network_ip)
             end
+
+            it 'should return the network IP from encode_instance_group_address' do
+              expect(
+                subject.encode_instance_group_address(
+                  prefer_dns_entry: prefer_dns_entry,
+                  network_name: network_name,
+                  network_type: network_type,
+                  instance_group_name: instance_group_name,
+                  instance_id: instance_id,
+                  network_ip: network_ip,
+                ),
+              ).to eq(network_ip)
+            end
           end
         end
 
@@ -182,6 +217,19 @@ module Bosh::Director
                 network_name: network_name,
                 network_type: network_type,
                 link_group_name: link_group_name,
+                instance_group_name: instance_group_name,
+                instance_id: instance_id,
+                network_ip: network_ip,
+              ),
+            ).to eq(network_ip)
+          end
+
+          it 'should return the network IP from encode_instance_group_address' do
+            expect(
+              subject.encode_instance_group_address(
+                prefer_dns_entry: prefer_dns_entry,
+                network_name: network_name,
+                network_type: network_type,
                 instance_group_name: instance_group_name,
                 instance_id: instance_id,
                 network_ip: network_ip,

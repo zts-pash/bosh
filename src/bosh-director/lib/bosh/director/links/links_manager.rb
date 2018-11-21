@@ -306,6 +306,7 @@ module Bosh::Director::Links
 
           properties = metadata['mapped_properties']
 
+          # TODO(ja,db): pass the provider.group_name into the DP-link
           content = Bosh::Director::DeploymentPlan::Link.new(
             provider.deployment.name,
             instance_group,

@@ -3,6 +3,7 @@ module Bosh::Director
     class Link
       attr_reader :name
 
+      # TODO(ja,db): make this take the link_group_name
       def initialize(
         deployment_name,
         source_instance_group,
@@ -39,9 +40,9 @@ module Bosh::Director
               'index' => instance.index,
               'bootstrap' => instance.bootstrap?,
               'az' => availability_zone,
-              'address' => instance_plan.network_address,
-              'addresses' => instance_plan.network_addresses(false),
-              'dns_addresses' => instance_plan.network_addresses(true),
+              'address' => instance_plan.network_address, # TODO(ja,db): pass the link_group_name here
+              'addresses' => instance_plan.network_addresses(false), # TODO(ja,db): pass the link_group_name here
+              'dns_addresses' => instance_plan.network_addresses(true), # TODO(ja,db): pass the link_group_name here
             }
           end,
         }
