@@ -50,6 +50,9 @@ module Bosh::Director::ConfigServer
       @config_server_client.interpolated_versioned_variables_changed?(previous_raw_hash, next_raw_hash, previous_variable_set, target_variable_set)
     end
 
+    def certificate_cache
+      @config_server_client.certificate_cache
+    end
 
     # Note: The links properties will be interpolated in the context of the deployment that provides them
     # @param [Hash] links_spec Hash to be interpolated

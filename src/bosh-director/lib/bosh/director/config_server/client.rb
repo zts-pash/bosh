@@ -9,7 +9,10 @@ module Bosh::Director::ConfigServer
       @deployment_lookup = Bosh::Director::Api::DeploymentLookup.new
       @logger = logger
       @cache_by_id = {}
+      @certificate_cache = {}
     end
+
+    attr_reader :certificate_cache
 
     # @param [Hash] raw_hash Hash to be interpolated. This method only supports Absolute Names.
     # @param [Hash] options Additional options
@@ -365,6 +368,10 @@ module Bosh::Director::ConfigServer
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'id'" unless fetched_variable.key?('id')
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'value'" unless fetched_variable.key?('value')
 
+        if fetched_variable['value'].key? 'certificate'
+          @certificate_cache[name + ',' + fetched_variable['id']] = fetched_variable['value']
+        end
+
         return fetched_variable['id'], extract_variable_value(name, fetched_variable['value'])
       elsif response.is_a? Net::HTTPNotFound
         raise Bosh::Director::ConfigServerMissingName, "Failed to find variable '#{name_root}' from config server: HTTP Code '404', Error: '#{response_body['error']}'"
@@ -421,6 +428,8 @@ module Bosh::Director::ConfigServer
       rescue Sequel::UniqueConstraintViolation
         @logger.debug("variable '#{get_name_root(name)}' was already added to set '#{variable_set.id}'")
       end
+
+      @certificate_cache[name + ',' + generated_variable['id']] = generated_variable['value'] if type == 'certificate'
 
       generated_variable
     end

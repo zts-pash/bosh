@@ -1572,6 +1572,75 @@ module Bosh::Director
           end
         end
 
+        describe 'getting deployment certificates expiry' do
+          let(:deployment) { Models::Deployment.create(name: 'test_deployment', manifest: '---') }
+          let(:deployment2) { Models::Deployment.create(name: 'other_deployment', manifest: '---') }
+
+          before do
+            basic_authorize 'reader', 'reader'
+
+            before = Time.now - (60 * 60 * 24)
+            later = Time.now + (60 * 60 * 24)
+            in30days = Time.now + (60 * 60 * 24 * 30)
+
+            Models::CertificateExpiry.create(
+              deployment: deployment,
+              certificate_path: '/director/test_deployment/master_root_ca',
+              expiry: later,
+            )
+            Models::CertificateExpiry.create(
+              deployment: deployment,
+              certificate_path: '/director/test_deployment/server_cert',
+              expiry: before,
+            )
+            Models::CertificateExpiry.create(
+              deployment: deployment,
+              certificate_path: '/director/test_deployment/broker_cert',
+              expiry: in30days,
+            )
+          end
+
+          it 'returns the certificate path and expiry for a deployment' do
+            get 'test_deployment/certificate_expiry'
+
+            expect(last_response.status).to eq(200)
+            body = JSON.parse(last_response.body)
+            expect(body.size).to eq(3)
+            expect(body).to include('certificate_path' => '/director/test_deployment/broker_cert',
+                                    'expiry_date' => /.*/, 'days_left' => 29)
+            expect(body).to include('certificate_path' => '/director/test_deployment/master_root_ca',
+                                    'expiry_date' => /.*/, 'days_left' => 0)
+            expect(body).to include('certificate_path' => '/director/test_deployment/server_cert',
+                                    'expiry_date' => /.*/, 'days_left' => -2)
+          end
+
+          it 'skips certificates for other deployments' do
+            Models::CertificateExpiry.create(
+              deployment: deployment2,
+              certificate_path: '/director/other_deployment/other_root_ca',
+              expiry: Time.now + (60 * 60 * 24 * 5),
+            )
+
+            get 'test_deployment/certificate_expiry'
+
+            expect(last_response.status).to eq(200)
+            body = JSON.parse(last_response.body)
+            expect(body.size).to eq(3)
+            expect(body).to_not include('certificate_path' => '/director/other_deployment/other_root_ca',
+                                        'expiry_date' => /.*/, 'days_left' => 4)
+          end
+
+          it 'returns 0 items if there are no certificates' do
+            deployment2
+
+            get 'other_deployment/certificate_expiry'
+
+            expect(last_response.status).to eq(200)
+            body = JSON.parse(last_response.body)
+            expect(body.size).to eq(0)
+          end
+        end
+
         describe 'property management' do
 
           it 'REST API for creating, updating, getting and deleting ' +

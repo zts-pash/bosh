@@ -260,6 +260,10 @@ module Bosh::Director
         end
       end
 
+      get '/:deployment/certificate_expiry', authorization: :read do
+        JSON.generate(create_certificate_expiry_response(deployment))
+      end
+
       delete '/:deployment' do
         options = {}
         options['force'] = true if params['force'] == 'true'
@@ -552,6 +556,20 @@ module Bosh::Director
           'ips' => ips(vm),
           'vm_created_at' => vm&.created_at&.utc&.iso8601,
         }
+      end
+
+      def create_certificate_expiry_response(deployment)
+        results = []
+
+        Models::CertificateExpiry.where(deployment: deployment).each do |expiry|
+          days_left = ((expiry.expiry - Time.now) / 60 / 60 / 24).floor
+          results << {
+            'certificate_path' => expiry.certificate_path,
+            'expiry_date' => expiry.expiry.utc.iso8601,
+            'days_left' => days_left,
+          }
+        end
+        results
       end
 
       def ips(vm)

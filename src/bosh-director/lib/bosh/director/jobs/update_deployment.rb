@@ -116,6 +116,7 @@ module Bosh::Director
             if is_deploy_action
               @links_manager.remove_unused_links(deployment_plan.model)
               current_variable_set.update(deployed_successfully: true)
+              update_certificate_expiry(deployment_plan)
               remove_unused_variable_sets(deployment_plan.model, deployment_plan.instance_groups)
               mark_orphaned_networks(deployment_plan)
             end
@@ -308,6 +309,25 @@ module Bosh::Director
           end
         end
         errors
+      end
+
+      def update_certificate_expiry(deployment_plan)
+        Models::CertificateExpiry.where(deployment: deployment_plan.model).delete
+
+        certificate_cache = @variables_interpolator.certificate_cache
+
+        certificate_cache.each do |key, value|
+          next unless value.key?('certificate')
+
+          cert = OpenSSL::X509::Certificate.new(value['certificate'])
+          path = key
+
+          Models::CertificateExpiry.create(
+            deployment: deployment_plan.model,
+            expiry: cert.not_after,
+            certificate_path: path,
+          )
+        end
       end
 
       def get_stemcells_and_releases
