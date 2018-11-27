@@ -16,7 +16,7 @@ module Bosh
                        recreate_deployment: false,
                        recreate_persistent_disks: false,
                        use_dns_addresses: false,
-                       use_short_dns_addresses: false,
+                       dns_encoder:,
                        logger: Config.logger,
                        tags: {},
                        variables_interpolator:)
@@ -29,9 +29,9 @@ module Bosh
           @recreate_persistent_disks = recreate_persistent_disks
           # TODO(ja,db): it turns out that this is only used for #network_address; can we get rid of it?
           @use_dns_addresses = use_dns_addresses
-          @use_short_dns_addresses = use_short_dns_addresses
           @logger = logger
           @tags = tags
+          @dns_encoder = dns_encoder
           @powerdns_manager = PowerDnsManagerProvider.create
           @variables_interpolator = variables_interpolator
         end
@@ -286,14 +286,6 @@ module Bosh
 
           deployment_name = @instance.model.deployment.name
 
-          # TODO(ja,db): pass this in to the class constructor instead of creating it here
-          feature_configured_dns_encoder = FeatureConfiguredDNSEncoder.new(
-            root_domain: root_domain,
-            deployment_name: deployment_name,
-            use_link_address: false,
-            use_short_dns_addresses: @use_short_dns_addresses,
-          )
-
           DeploymentPlan::NetworkSettings.new(
             instance_group_name:            @instance.instance_group_name,
             deployment_name:                deployment_name,
@@ -304,7 +296,7 @@ module Bosh
             instance_index:                 @instance.index,
             instance_id:                    @instance.uuid,
             root_domain:                    root_domain,
-            feature_configured_dns_encoder: feature_configured_dns_encoder,
+            feature_configured_dns_encoder: @dns_encoder,
           )
         end
 

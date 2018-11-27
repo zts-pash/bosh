@@ -27,7 +27,7 @@ module Bosh
             skip_drain: @skip_drain_decider.for_job(existing_instance_model.job),
             recreate_deployment: @recreate_deployment,
             use_dns_addresses: @use_dns_addresses,
-            use_short_dns_addresses: @use_short_dns_addresses,
+            dns_encoder: dns_encoder(existing_instance_model.deployment.name),
             variables_interpolator: @variables_interpolator,
           )
         end
@@ -46,8 +46,8 @@ module Bosh
             recreate_deployment: @recreate_deployment,
             recreate_persistent_disks: @recreate_persistent_disks,
             use_dns_addresses: @use_dns_addresses,
-            use_short_dns_addresses: @use_short_dns_addresses,
             tags: @tags,
+            dns_encoder: dns_encoder(existing_instance_model.deployment.name),
             variables_interpolator: @variables_interpolator,
           )
         end
@@ -63,8 +63,8 @@ module Bosh
             skip_drain: @skip_drain_decider.for_job(desired_instance.instance_group.name),
             recreate_deployment: @recreate_deployment,
             use_dns_addresses: @use_dns_addresses,
-            use_short_dns_addresses: @use_short_dns_addresses,
             tags: @tags,
+            dns_encoder: dns_encoder(desired_instance.deployment.name),
             variables_interpolator: @variables_interpolator,
           )
         end
@@ -77,6 +77,15 @@ module Bosh
 
         def instance_state(existing_instance_model)
           @states_by_existing_instance[existing_instance_model]
+        end
+
+        def dns_encoder(deployment_name)
+          FeatureConfiguredDNSEncoder.new(
+            root_domain: Config.root_domain, # TODO reading global config :(
+            deployment_name: deployment_name,
+            use_link_address: false,
+            use_short_dns_addresses: @use_short_dns_addresses,
+          )
         end
       end
     end

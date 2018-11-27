@@ -6,6 +6,7 @@ module Bosh::Director
       include Bosh::Director::IpUtil
 
       let(:instance_repo) { BD::DeploymentPlan::InstanceRepository.new(network_reservation_repository, logger, variables_interpolator) }
+      let(:dns_encoder) { instance_double(FeatureConfiguredDNSEncoder) }
       let(:variables_interpolator) { instance_double(Bosh::Director::ConfigServer::VariablesInterpolator) }
       let(:skip_drain) { SkipDrain.new(true) }
       let(:index_assigner) { instance_double('Bosh::Director::DeploymentPlan::PlacementPlanner::IndexAssigner') }
@@ -41,7 +42,7 @@ module Bosh::Director
       end
 
       let(:deployment_model) do
-        Models::Deployment.make(manifest: YAML.dump(Bosh::Spec::Deployments.minimal_manifest), name: 'name-7')
+        Models::Deployment.make(manifest: YAML.dump(Bosh::Spec::Deployments.minimal_manifest), name: Sham.name)
       end
 
       let(:range) { NetAddr::CIDR.create('192.168.1.1/24') }
@@ -100,18 +101,49 @@ module Bosh::Director
         allow(desired_instance).to receive(:instance_group).and_return(instance_group)
         allow(desired_instance).to receive(:index).and_return(1)
         allow(desired_instance).to receive(:index=)
-        allow(desired_instance).to receive(:deployment)
+        allow(desired_instance).to receive(:deployment).and_return(deployment_model)
         allow(instance_repo).to receive(:create)
         allow(instance_repo).to receive(:fetch_existing).and_return(plan_instance)
         allow(instance_group).to receive(:name).and_return('group-name')
         allow(index_assigner).to receive(:assign_index)
         allow(plan_instance).to receive(:update_description)
+        allow(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder).to receive(:new).with(
+          root_domain: "bosh",
+          deployment_name: deployment_model.name,
+          use_link_address: false,
+          use_short_dns_addresses: false, # default
+        ).and_return(dns_encoder)
       end
 
       describe '#obsolete_instance_plan' do
         it 'returns an instance plan with a nil desired instance' do
           instance_plan = instance_plan_factory.obsolete_instance_plan(existing_instance_model)
           expect(instance_plan.desired_instance).to be_nil
+        end
+
+        context 'use_short_dns_addresses is configurable' do
+          let(:use_short_dns_addresses) { double(:use_short_dns_addresses) }
+          let(:options) { { 'use_short_dns_addresses' => use_short_dns_addresses } }
+
+          it 'propagates dns_encoder' do
+            expect(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder).to receive(:new).with(
+              include(use_short_dns_addresses: use_short_dns_addresses),
+            ).and_return(dns_encoder)
+
+            expect(InstancePlan).to receive(:new).with(
+              include(dns_encoder: dns_encoder),
+            )
+
+            instance_plan_factory.desired_new_instance_plan(desired_instance)
+          end
+        end
+
+        it 'propagates dns_encoder' do
+          expect(InstancePlan).to receive(:new).with(
+            include(dns_encoder: dns_encoder),
+          )
+
+          instance_plan_factory.desired_new_instance_plan(desired_instance)
         end
 
         it 'populates the instance plan existing model' do
@@ -149,27 +181,10 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 use_dns_addresses: true,
-                use_short_dns_addresses: false,
+                dns_encoder: anything,
                 variables_interpolator: variables_interpolator,
               )
               instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-            end
-
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) { { 'use_short_dns_addresses' => true, 'use_dns_addresses' => true } }
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true,
-                  variables_interpolator: variables_interpolator,
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
             end
           end
 
@@ -184,8 +199,8 @@ module Bosh::Director
                 instance: anything,
                 skip_drain: anything,
                 recreate_deployment: anything,
-                use_short_dns_addresses: false,
                 use_dns_addresses: false,
+                dns_encoder: anything,
                 variables_interpolator: variables_interpolator,
               )
               instance_plan_factory.obsolete_instance_plan(existing_instance_model)
@@ -230,6 +245,14 @@ module Bosh::Director
         let(:tags) { { 'key1' => 'value1' } }
         let(:options) { { 'tags' => tags } }
 
+        it 'propagates dns_encoder' do
+          expect(InstancePlan).to receive(:new).with(
+            include(dns_encoder: dns_encoder),
+          )
+
+          instance_plan_factory.desired_new_instance_plan(desired_instance)
+        end
+
         it 'passes tags to instance plan creation' do
           expect(InstancePlan).to receive(:new).with(
             desired_instance: anything,
@@ -239,8 +262,8 @@ module Bosh::Director
             recreate_deployment: anything,
             recreate_persistent_disks: anything,
             use_dns_addresses: anything,
-            use_short_dns_addresses: anything,
             tags: tags,
+            dns_encoder: anything,
             variables_interpolator: variables_interpolator,
           )
 
@@ -260,7 +283,7 @@ module Bosh::Director
               recreate_persistent_disks: true,
               tags: anything,
               use_dns_addresses: anything,
-              use_short_dns_addresses: anything,
+              dns_encoder: anything,
               variables_interpolator: anything,
             )
             instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
@@ -294,27 +317,10 @@ module Bosh::Director
                 recreate_persistent_disks: anything,
                 tags: anything,
                 use_dns_addresses: true,
-                use_short_dns_addresses: false,
+                dns_encoder: anything,
                 variables_interpolator: variables_interpolator,
               )
               instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
-            end
-
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) { { 'use_short_dns_addresses' => true, 'use_dns_addresses' => true } }
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true,
-                  variables_interpolator: anything,
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
             end
           end
 
@@ -331,8 +337,8 @@ module Bosh::Director
                 recreate_deployment: anything,
                 recreate_persistent_disks: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
                 use_dns_addresses: false,
+                dns_encoder: anything,
                 variables_interpolator: anything,
               )
               instance_plan_factory.desired_existing_instance_plan(existing_instance_model, desired_instance)
@@ -345,17 +351,9 @@ module Bosh::Director
         let(:tags) { { 'key1' => 'value1' } }
         let(:options) { { 'tags' => tags } }
 
-        it 'passes tags to instance plan creation' do
+        it 'propagates dns_encoder' do
           expect(InstancePlan).to receive(:new).with(
-            desired_instance: anything,
-            existing_instance: anything,
-            instance: anything,
-            skip_drain: anything,
-            recreate_deployment: anything,
-            use_short_dns_addresses: anything,
-            use_dns_addresses: anything,
-            tags: tags,
-            variables_interpolator: anything,
+            include(dns_encoder: dns_encoder),
           )
 
           instance_plan_factory.desired_new_instance_plan(desired_instance)
@@ -386,28 +384,11 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
                 use_dns_addresses: true,
+                dns_encoder: anything,
                 variables_interpolator: anything,
               )
               instance_plan_factory.desired_new_instance_plan(desired_instance)
-            end
-
-            context 'when also passing use_short_dns_addresses' do
-              let(:options) { { 'use_short_dns_addresses' => true, 'use_dns_addresses' => true } }
-              it 'provides the instance_plan with the correct use_dns_addresses' do
-                expect(InstancePlan).to receive(:new).with(
-                  desired_instance: anything,
-                  existing_instance: anything,
-                  instance: anything,
-                  skip_drain: anything,
-                  recreate_deployment: anything,
-                  use_dns_addresses: true,
-                  use_short_dns_addresses: true,
-                  variables_interpolator: anything,
-                )
-                instance_plan_factory.obsolete_instance_plan(existing_instance_model)
-              end
             end
           end
 
@@ -423,8 +404,8 @@ module Bosh::Director
                 skip_drain: anything,
                 recreate_deployment: anything,
                 tags: anything,
-                use_short_dns_addresses: false,
                 use_dns_addresses: false,
+                dns_encoder: anything,
                 variables_interpolator: anything,
               )
               instance_plan_factory.desired_new_instance_plan(desired_instance)

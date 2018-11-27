@@ -45,13 +45,14 @@ module Bosh::Director::DeploymentPlan
         instance: instance,
         network_plans: network_plans,
         use_dns_addresses: use_dns_addresses,
-        use_short_dns_addresses: use_short_dns_addresses,
+        dns_encoder: dns_encoder,
         logger: logger,
         tags: tags,
         variables_interpolator: variables_interpolator,
       )
     end
 
+    let(:dns_encoder) { instance_double(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder) }
     let(:variables_interpolator) { Bosh::Director::ConfigServer::VariablesInterpolator.new }
     let(:instance_group) do
       ig = InstanceGroup.parse(deployment_plan, instance_group_spec, BD::Config.event_log, logger)
@@ -89,7 +90,6 @@ module Bosh::Director::DeploymentPlan
     end
 
     let(:use_dns_addresses) { false }
-    let(:use_short_dns_addresses) { false }
     let(:tags) do
       { 'key1' => 'value1' }
     end
@@ -422,6 +422,7 @@ module Bosh::Director::DeploymentPlan
                 existing_instance: mock_existing_instance,
                 desired_instance: mock_desired_instance,
                 instance: mock_instance,
+                dns_encoder: dns_encoder,
                 variables_interpolator: variables_interpolator,
               )
             end
@@ -483,6 +484,7 @@ module Bosh::Director::DeploymentPlan
             desired_instance: nil,
             instance: nil,
             network_plans: network_plans,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -701,6 +703,7 @@ module Bosh::Director::DeploymentPlan
           existing_instance: mock_existing_instance,
           desired_instance: mock_desired_instance,
           instance: mock_instance,
+          dns_encoder: dns_encoder,
           variables_interpolator: variables_interpolator,
         )
       end
@@ -857,6 +860,7 @@ module Bosh::Director::DeploymentPlan
             desired_instance: nil,
             instance: nil,
             network_plans: network_plans,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1188,6 +1192,8 @@ module Bosh::Director::DeploymentPlan
         instance_plan.existing_instance.update(spec: {
           'vm_type' => { 'name' => 'old', 'cloud_properties' => { 'a' => 'b' } },
         })
+
+        allow(dns_encoder).to receive(:encode_instance_group_address)
       end
 
       it 'should write the current spec to the database' do
@@ -1212,6 +1218,7 @@ module Bosh::Director::DeploymentPlan
             instance: instance,
             network_plans: network_plans,
             recreate_deployment: true,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1260,6 +1267,7 @@ module Bosh::Director::DeploymentPlan
             instance: instance,
             network_plans: network_plans,
             recreate_persistent_disks: true,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1297,6 +1305,7 @@ module Bosh::Director::DeploymentPlan
             instance: instance,
             network_plans: network_plans,
             recreate_deployment: true,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1314,6 +1323,7 @@ module Bosh::Director::DeploymentPlan
             instance: nil,
             network_plans: network_plans,
             recreate_deployment: true,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1345,6 +1355,7 @@ module Bosh::Director::DeploymentPlan
             instance: instance,
             network_plans: network_plans,
             recreate_persistent_disks: true,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1415,6 +1426,7 @@ module Bosh::Director::DeploymentPlan
             existing_instance: existing_instance,
             desired_instance: nil,
             instance: nil,
+            dns_encoder: dns_encoder,
             variables_interpolator: variables_interpolator,
           )
         end
@@ -1453,22 +1465,9 @@ module Bosh::Director::DeploymentPlan
     end
 
     describe '#network_address' do
-      let(:network_plans) { [NetworkPlanner::Plan.new(reservation: reservation)] }
-      let(:network_settings) { instance_double(Bosh::Director::DeploymentPlan::NetworkSettings) }
-      let(:feature_configured_dns_encoder) { instance_double(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder) }
-
-      before do
-        allow(Bosh::Director::DeploymentPlan::FeatureConfiguredDNSEncoder).to receive(:new).with(
-          root_domain: 'bosh',
-          deployment_name: 'simple',
-          use_link_address: false,
-          use_short_dns_addresses: use_short_dns_addresses,
-        ).and_return feature_configured_dns_encoder
-      end
-
-      # TODO(ja,db): figure out an acceptable middle ground for doubles/booleans: this is gross
-      let(:use_short_dns_addresses) { double(:use_short_dns_addresses) }
-      let(:use_dns_addresses)       { double(:use_dns_addresses) }
+      let(:network_plans)     { [NetworkPlanner::Plan.new(reservation: reservation)] }
+      let(:network_settings)  { instance_double(Bosh::Director::DeploymentPlan::NetworkSettings) }
+      let(:use_dns_addresses) { double(:use_dns_addresses) }
 
       before do
         allow(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).and_return(network_settings)
@@ -1476,7 +1475,7 @@ module Bosh::Director::DeploymentPlan
 
       it 'creates NetworkSettings with the feature_configured_dns_encoder' do
         expect(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).with(
-          include(feature_configured_dns_encoder: feature_configured_dns_encoder),
+          include(feature_configured_dns_encoder: dns_encoder),
         )
 
         instance_plan.network_settings
