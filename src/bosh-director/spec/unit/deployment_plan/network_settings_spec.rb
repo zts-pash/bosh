@@ -14,6 +14,7 @@ module Bosh::Director::DeploymentPlan
         'uuid-1',
         'bosh1.tld',
         use_short_dns_addresses,
+        use_link_dns_addresses,
       )
     end
     let(:instance_group) do
@@ -48,6 +49,7 @@ module Bosh::Director::DeploymentPlan
 
     let(:plan) { instance_double(Planner, using_global_networking?: true, name: 'fake-deployment') }
     let(:use_short_dns_addresses) { false }
+    let(:use_link_dns_addresses) { false }
 
     before do
       allow_any_instance_of(Bosh::Director::DnsEncoder).to receive(:num_for_uuid)
@@ -209,6 +211,7 @@ module Bosh::Director::DeploymentPlan
             3,
             'uuid-1',
             'bosh1.tld',
+            false,
             false
           )
         end

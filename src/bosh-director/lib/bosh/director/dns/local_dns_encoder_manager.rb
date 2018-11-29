@@ -12,7 +12,8 @@ module Bosh::Director
       end
     end
 
-    def self.create_dns_encoder(use_short_dns_names = false)
+    # TODO verify all callers of this have been updated if they care about link_dns_addresses
+    def self.create_dns_encoder(use_short_dns_names = false, use_link_dns_addresses = false)
       az_hash = Models::LocalDnsEncodedAz.as_hash(:name, :id)
 
       service_groups = {}
@@ -32,7 +33,7 @@ module Bosh::Director
         }] = join_row[:id].to_s
       end
 
-      Bosh::Director::DnsEncoder.new(service_groups, az_hash, use_short_dns_names)
+      Bosh::Director::DnsEncoder.new(service_groups, az_hash, use_short_dns_names, use_link_dns_addresses)
     end
 
     def self.new_encoder_with_updated_index(plan)

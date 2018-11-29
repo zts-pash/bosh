@@ -3012,16 +3012,17 @@ describe Bosh::Director::Links::LinksManager do
           serial_id: serial_id, # different from current deployment links_serial_id
         )
 
+        # TODO link_name should be tested and anything should not be used
         allow(Bosh::Director::DeploymentPlan::Link)
-          .to receive(:new).with(deployment_model.name, instance_group, { 'a' => '1' }, false, false, false).and_return(link_1)
+          .to receive(:new).with(deployment_model.name, anything, instance_group, { 'a' => '1' }, false, false, false).and_return(link_1)
         allow(Bosh::Director::DeploymentPlan::Link)
-          .to receive(:new).with(deployment_model.name, instance_group, { 'b' => '2' }, false, false, false).and_return(link_2)
+          .to receive(:new).with(deployment_model.name, anything, instance_group, { 'b' => '2' }, false, false, false).and_return(link_2)
         allow(Bosh::Director::DeploymentPlan::Link)
-          .to receive(:new).with(deployment_model.name, instance_group, { 'c' => '1' }, false, false, false).and_return(link_3)
+          .to receive(:new).with(deployment_model.name, anything, instance_group, { 'c' => '1' }, false, false, false).and_return(link_3)
         allow(Bosh::Director::DeploymentPlan::Link)
-          .to receive(:new).with(deployment_model.name, instance_group, { 'd' => '2' }, false, false, false).and_return(link_4)
+          .to receive(:new).with(deployment_model.name, anything, instance_group, { 'd' => '2' }, false, false, false).and_return(link_4)
         allow(Bosh::Director::DeploymentPlan::Link)
-          .to receive(:new).with(deployment_model.name, instance_group, { 'e' => '5' }, false, false, false).and_return(link_5)
+          .to receive(:new).with(deployment_model.name, anything, instance_group, { 'e' => '5' }, false, false, false).and_return(link_5)
       end
 
       context 'link provider intent contents' do

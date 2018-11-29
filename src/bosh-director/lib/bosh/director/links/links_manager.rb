@@ -308,6 +308,7 @@ module Bosh::Director::Links
 
           content = Bosh::Director::DeploymentPlan::Link.new(
             provider.deployment.name,
+            provider.name,
             instance_group,
             properties,
             deployment_plan.use_dns_addresses?,

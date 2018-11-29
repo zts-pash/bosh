@@ -1,6 +1,17 @@
 module Bosh::Director
   class DeploymentPlan::NetworkSettings
-    def initialize(instance_group_name, deployment_name, default_network, desired_reservations, current_networks, availability_zone, instance_index, instance_id, root_domain, use_short_dns_addresses)
+    def initialize(instance_group_name,
+      deployment_name,
+      default_network,
+      desired_reservations,
+      current_networks,
+      availability_zone,
+      instance_index,
+      instance_id,
+      root_domain,
+      use_short_dns_addresses,
+      use_link_dns_addresses
+    )
       @instance_group_name = instance_group_name
       @desired_reservations = desired_reservations
       @default_network = default_network
@@ -10,7 +21,7 @@ module Bosh::Director
       @instance_id = instance_id
       @current_networks = current_networks
       @root_domain = root_domain
-      @dns_encoder = LocalDnsEncoderManager.create_dns_encoder(use_short_dns_addresses)
+      @dns_encoder = LocalDnsEncoderManager.create_dns_encoder(use_short_dns_addresses, use_link_dns_addresses)
     end
 
     def to_hash
@@ -64,8 +75,24 @@ module Bosh::Director
       network_addresses
     end
 
+    def link_network_address(link_def, prefer_dns_entry)
+      network_name = @default_network['addressable'] || @default_network['gateway']
+      get_link_address(link_def, network_name, to_hash[network_name], prefer_dns_entry)
+    end
+
+    def link_network_addresses(link_def, prefer_dns_entry)
+      network_addresses = {}
+
+      to_hash.each do |network_name, network|
+        network_addresses[network_name] = get_link_address(link_def, network_name, network, prefer_dns_entry)
+      end
+
+      network_addresses
+    end
+
     private
 
+    # TODO refactor get_address + get_link_address
     def get_address(network_name, network, prefer_dns_entry = true)
       if should_use_dns?(network, prefer_dns_entry)
         return @dns_encoder.encode_query({
@@ -76,6 +103,21 @@ module Bosh::Director
           deployment_name: @deployment_name,
           uuid: @instance_id,
         })
+      else
+        return network['ip']
+      end
+    end
+
+    def get_link_address(link_def, network_name, network, prefer_dns_entry = true)
+      if should_use_dns?(network, prefer_dns_entry)
+        return @dns_encoder.encode_link(
+          link_def,
+          {
+            root_domain: @root_domain,
+            default_network: network_name,
+            uuid: @instance_id,
+          }
+        )
       else
         return network['ip']
       end

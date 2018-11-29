@@ -1471,6 +1471,7 @@ module Bosh::Director::DeploymentPlan
             anything,
             anything,
             true,
+            anything,
           )
 
           instance_plan.network_settings
@@ -1496,6 +1497,36 @@ module Bosh::Director::DeploymentPlan
         it 'calls it with correct value' do
           expect(network_settings).to receive(:network_address).with(use_dns_addresses)
           instance_plan.network_address
+        end
+      end
+    end
+
+    # TODO needs link_network_addresses test
+
+    describe '#link_network_address' do
+      let(:network_plans) { [NetworkPlanner::Plan.new(reservation: reservation)] }
+      let(:network_settings) { instance_double(Bosh::Director::DeploymentPlan::NetworkSettings) }
+      let(:link_def) { instance_double(Bosh::Director::DeploymentPlan::Link) }
+
+      before do
+        allow(Bosh::Director::DeploymentPlan::NetworkSettings).to receive(:new).and_return(network_settings)
+      end
+
+      context 'when use_dns_addresses is FALSE' do
+        let(:use_dns_addresses) { false }
+
+        it 'calls it with correct value' do
+          expect(network_settings).to receive(:link_network_address).with(link_def, use_dns_addresses)
+          instance_plan.link_network_address(link_def)
+        end
+      end
+
+      context 'when use_dns_addresses is TRUE' do
+        let(:use_dns_addresses) { true }
+
+        it 'calls it with correct value' do
+          expect(network_settings).to receive(:link_network_address).with(link_def, use_dns_addresses)
+          instance_plan.link_network_address(link_def)
         end
       end
     end

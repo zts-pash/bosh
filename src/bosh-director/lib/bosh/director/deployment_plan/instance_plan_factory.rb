@@ -12,6 +12,8 @@ module Bosh
           @network_reservation_repository = network_reservation_repository
           @use_dns_addresses = options.fetch('use_dns_addresses', false)
           @use_short_dns_addresses = options.fetch('use_short_dns_addresses', false)
+          # TODO why are all other use_*_dns_ suffixed with addresses, but we use names here? consistency?
+          @use_link_dns_addresses = options.fetch('use_link_dns_names', false)
           @randomize_az_placement = options.fetch('randomize_az_placement', false)
           @tags = options.fetch('tags', {})
           @variables_interpolator = variables_interpolator
@@ -28,6 +30,7 @@ module Bosh
             recreate_deployment: @recreate_deployment,
             use_dns_addresses: @use_dns_addresses,
             use_short_dns_addresses: @use_short_dns_addresses,
+            use_link_dns_addresses: @use_link_dns_addresses,
             variables_interpolator: @variables_interpolator,
           )
         end
@@ -47,6 +50,7 @@ module Bosh
             recreate_persistent_disks: @recreate_persistent_disks,
             use_dns_addresses: @use_dns_addresses,
             use_short_dns_addresses: @use_short_dns_addresses,
+            use_link_dns_addresses: @use_link_dns_addresses,
             tags: @tags,
             variables_interpolator: @variables_interpolator,
           )
@@ -64,6 +68,7 @@ module Bosh
             recreate_deployment: @recreate_deployment,
             use_dns_addresses: @use_dns_addresses,
             use_short_dns_addresses: @use_short_dns_addresses,
+            use_link_dns_addresses: @use_link_dns_addresses,
             tags: @tags,
             variables_interpolator: @variables_interpolator,
           )

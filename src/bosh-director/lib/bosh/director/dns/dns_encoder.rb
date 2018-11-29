@@ -1,9 +1,26 @@
 module Bosh::Director
   class DnsEncoder
-    def initialize(service_groups={}, az_hash={}, short_dns_enabled=false)
+    def initialize(service_groups = {}, az_hash = {}, short_dns_enabled = false, link_dns_enabled = false)
       @az_hash = az_hash
       @service_groups = service_groups
       @short_dns_enabled = short_dns_enabled
+      @link_dns_enabled = link_dns_enabled
+    end
+
+    # TODO should there be a specialized, smaller Link object for this?
+    def encode_link(link_def, criteria = {})
+      # TODO is this modifying the caller's hash?
+      criteria[:deployment_name] = link_def.provider_deployment_name
+
+      if @link_dns_enabled
+        criteria[:group_type] = Models::LocalDnsEncodedGroup::Types::LINK
+        criteria[:group_name] = link_def.provider_name
+      else
+        criteria[:group_type] = Models::LocalDnsEncodedGroup::Types::INSTANCE_GROUP
+        criteria[:group_name] = link_def.source_instance_group.name
+      end
+
+      encode_query(criteria, true)
     end
 
     def encode_query(criteria, force_short_dns = nil)
