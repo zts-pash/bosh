@@ -3,21 +3,21 @@ require 'timecop'
 
 class FakeNATS
   def initialize(verbose=false)
-    @subscribers = []
+    @subscribers = {}
     @verbose = verbose
   end
 
   def subscribe(channel, &block)
     puts "Adding subscriber (#{channel}): #{block.inspect}" if @verbose
-    @subscribers << block
+    @subscribers[channel] = (@subscribers[channel] || []) << block
   end
 
-  def alert(message)
+  def publish(channel, message)
     reply = 'reply'
     subject = '1.2.3.not-an-agent'
 
-    @subscribers.each do |subscriber|
-      puts "Alerting subscriber: #{subscriber}" if @verbose
+    @subscribers[channel].each do |subscriber|
+      puts "#{channel} subscriber: #{subscriber}" if @verbose
       subscriber.call(message, reply, subject)
     end
   end
@@ -51,7 +51,7 @@ describe 'notifying plugins' do
         allow(NATS).to receive(:connect).and_return(nats)
         runner.run
         wait_for_plugins
-        nats.alert(JSON.dump(payload))
+        nats.publish('hm.director.alert', JSON.dump(payload))
         EM.add_timer(2) { EM.stop }
         EM.add_periodic_timer(0.1) do
           alert = get_alert

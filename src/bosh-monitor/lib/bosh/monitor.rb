@@ -59,6 +59,7 @@ require 'bosh/monitor/protocols/graphite_connection'
 # Events
 require 'bosh/monitor/events/base'
 require 'bosh/monitor/events/alert'
+require 'bosh/monitor/events/stats'
 require 'bosh/monitor/events/heartbeat'
 
 # Plugins

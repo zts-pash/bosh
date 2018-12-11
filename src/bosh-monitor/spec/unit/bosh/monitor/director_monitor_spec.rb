@@ -36,12 +36,14 @@ describe Bosh::Monitor::DirectorMonitor do
           expect(logger).to_not receive(:error)
           expect(event_processor).to receive(:process)
           expect(nats).to receive(:subscribe).with('hm.director.alert').and_yield(message, nil, 'hm.director.alert')
+          expect(nats).to receive(:subscribe).with('hm.director.stats').and_yield(message, nil, 'hm.director.stats')
 
           monitor.subscribe
         end
 
         it 'tells the event processor to process the alert' do
           expect(nats).to receive(:subscribe).with('hm.director.alert').and_yield(message, nil, 'hm.director.alert')
+          expect(nats).to receive(:subscribe).with('hm.director.stats').and_yield(message, nil, 'hm.director.stats')
           expect(event_processor).to receive(:process).with(:alert, payload)
 
           monitor.subscribe
@@ -54,6 +56,7 @@ describe Bosh::Monitor::DirectorMonitor do
             payload.delete(key)
             expect(logger).to receive(:error).with("Invalid payload from director: the key '#{key}' was missing. #{payload.inspect}")
             expect(nats).to receive(:subscribe).with('hm.director.alert').and_yield(message, nil, 'hm.director.alert')
+            expect(nats).to receive(:subscribe).with('hm.director.stats').and_yield(message, nil, 'hm.director.stats')
 
             monitor.subscribe
           end
@@ -61,6 +64,7 @@ describe Bosh::Monitor::DirectorMonitor do
           it 'does not create a new director alert' do
             payload.delete(key)
             expect(nats).to receive(:subscribe).with('hm.director.alert').and_yield(message, nil, 'hm.director.alert')
+            expect(nats).to receive(:subscribe).with('hm.director.stats').and_yield(message, nil, 'hm.director.stats')
             expect(event_processor).to_not receive(:process)
 
             monitor.subscribe

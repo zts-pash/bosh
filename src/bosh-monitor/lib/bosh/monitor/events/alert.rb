@@ -58,7 +58,7 @@ module Bosh::Monitor
 
       def to_hash
         {
-          :kind        => "alert",
+          :kind        => @kind.to_s,
           :id          => @id,
           :severity    => @severity,
           :category    => @category,

@@ -53,6 +53,24 @@ def make_alert(attrs = {})
   Bhm::Events::Alert.new(defaults.merge(attrs))
 end
 
+def make_stats(attrs = {})
+  defaults = {
+    'id' => 1,
+    'cpu' => {
+      'user' => '',
+      'nice' => ''
+    },
+    'memory' => {
+      'total' => 4321,
+      'used' => 123,
+      'used_percent' => 30,
+    },
+    'disk' => {},
+    'created_at' => Time.now.to_i
+  }
+  Bhm::Events::Stats.new(defaults.merge(attrs))
+end
+
 def make_heartbeat(attrs = {})
   defaults = {
       :id => 1,

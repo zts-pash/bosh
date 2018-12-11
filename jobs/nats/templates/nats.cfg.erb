@@ -14,7 +14,8 @@ authorization {<% if p('nats.allow_legacy_agents') %>
   DIRECTOR_PERMISSIONS: {
     publish: [
       "agent.*",
-      "hm.director.alert"
+      "hm.director.alert",
+      "hm.director.stats"
     ]
     subscribe: ["director.>"]
   }
