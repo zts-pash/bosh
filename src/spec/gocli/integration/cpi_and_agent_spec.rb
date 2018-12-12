@@ -476,4 +476,226 @@ describe 'CPI and Agent:', type: :integration do
       end
     end
   end
+
+  context 'with two instances' do
+    let(:instances) { 2 }
+
+    context 'when the update deployment fails pinging the agent on the last instance' do
+      let(:attach_disk_invocations) do
+        invocations = final_deploy_invocations.find_all { |i| i.method == 'attach_disk' }
+        invocations
+      end
+
+      let(:happy_disk_id) do
+        attach_disk_invocations.find { |i| i.vm_cid != unhappy_vm_final_deploy_id }.disk_id
+      end
+
+      let(:unhappy_disk_id) do
+        attach_disk_invocations.find { |i| i.vm_cid == unhappy_vm_final_deploy_id }.disk_id
+      end
+
+      let(:fresh_create_vm_calls) do
+        fresh_deploy_invocations.find_all { |i| i.method == 'create_vm' }.slice(-2, 2) # skip compilation VMs
+      end
+
+      let(:happy_create_vm_call) do
+        fresh_create_vm_calls.find do |call|
+          call.response == fresh_deploy_invocations.find { |i| i.method == 'attach_disk' && i.disk_id == happy_disk_id }.vm_cid
+        end
+      end
+
+      let(:unhappy_create_vm_call) do
+        fresh_create_vm_calls.find do |call|
+          call.response == fresh_deploy_invocations.find { |i| i.method == 'attach_disk' && i.disk_id == unhappy_disk_id }.vm_cid
+        end
+      end
+
+      let(:happy_original_vm_id) do
+        cid_and_agent(happy_create_vm_call).first
+      end
+
+      let(:happy_original_vm_agent_id) do
+        cid_and_agent(happy_create_vm_call).last
+      end
+
+      let(:unhappy_original_vm_id) do
+        cid_and_agent(unhappy_create_vm_call).first
+      end
+
+      let(:unhappy_original_vm_agent_id) do
+        cid_and_agent(unhappy_create_vm_call).last
+      end
+
+      let(:failing_raw_invocations) do
+        manifest_hash['update'] = manifest_hash['update'].merge('vm_strategy' => 'create-swap-delete')
+        manifest_hash['instance_groups'].first['env'] = { 'bosh' => { 'password' => 'foobar' } }
+
+        current_sandbox.cpi.reset_count('create_vm')
+        current_sandbox.cpi.commands.make_create_vm_have_unresponsive_agent_for_call(2)
+
+        failing_task_output = deploy_simple_manifest(manifest_hash: manifest_hash, failure_expected: true)
+        invocations = get_invocations(failing_task_output)
+
+        current_sandbox.cpi.commands.allow_create_vm_to_have_responsive_agent
+
+        invocations
+      end
+
+      let(:failing_invocation_create_vm_calls) do
+        failing_raw_invocations.find_all { |i| i.method == 'create_vm' }
+      end
+
+      let(:happy_hotswapped_create_vm_call) do
+        failing_invocation_create_vm_calls.first
+      end
+
+      let(:unhappy_hotswapped_create_vm_call) do
+        failing_invocation_create_vm_calls.last
+      end
+
+      let(:happy_hotswapped_vm_id) do
+        cid_and_agent(happy_hotswapped_create_vm_call).first
+      end
+
+      let(:happy_hotswapped_vm_agent_id) do
+        cid_and_agent(happy_hotswapped_create_vm_call).last
+      end
+
+      let(:unhappy_hotswapped_vm_id) do
+        cid_and_agent(unhappy_hotswapped_create_vm_call).first
+      end
+
+      let(:unhappy_hotswapped_vm_agent_id) do
+        cid_and_agent(unhappy_hotswapped_create_vm_call).last
+      end
+
+      let(:happy_vm_failing_deploy_invocations) do
+        filter_invocations(
+          failing_raw_invocations,
+          agent_ids: [happy_original_vm_agent_id, happy_hotswapped_vm_agent_id],
+          vm_cids: [happy_original_vm_id, happy_hotswapped_vm_id],
+        )
+      end
+
+      let(:unhappy_vm_failing_deploy_invocations) do
+        filter_invocations(
+          failing_raw_invocations,
+          agent_ids: [unhappy_original_vm_agent_id, unhappy_hotswapped_vm_agent_id],
+          vm_cids: [unhappy_original_vm_id, unhappy_hotswapped_vm_id],
+        )
+      end
+
+      let(:final_deploy_invocations) do
+        manifest_hash['update'] = manifest_hash['update'].merge('vm_strategy' => 'create-swap-delete')
+        manifest_hash['instance_groups'].first['env'] = { 'bosh' => { 'password' => 'foobar' } }
+
+        task_output = deploy_simple_manifest(manifest_hash: manifest_hash)
+
+        get_invocations(task_output)
+      end
+
+      let(:final_deploy_create_vm_invocations) do
+        invocations = final_deploy_invocations.find_all { |i| i.method == 'create_vm' }
+        expect(invocations.length).to eq(1)
+        invocations
+      end
+
+      let(:unhappy_vm_final_deploy_id) do
+        cid_and_agent(final_deploy_create_vm_invocations.first).first
+      end
+
+      let(:unhappy_vm_final_deploy_agent_id) do
+        cid_and_agent(final_deploy_create_vm_invocations.first).last
+      end
+
+      let(:happy_vm_final_deploy_invocations) do
+        filter_invocations(
+          final_deploy_invocations,
+          agent_ids: [happy_original_vm_agent_id, happy_hotswapped_vm_agent_id],
+          vm_cids: [happy_original_vm_id, happy_hotswapped_vm_id],
+          disk_ids: [happy_disk_id],
+        )
+      end
+
+      let(:unhappy_vm_final_deploy_invocations) do
+        filter_invocations(
+          final_deploy_invocations,
+          agent_ids: [unhappy_original_vm_agent_id, unhappy_vm_final_deploy_agent_id],
+          vm_cids: [unhappy_original_vm_id, unhappy_vm_final_deploy_id],
+          disk_ids: [unhappy_disk_id],
+        )
+      end
+
+      let(:reference) do
+        {
+          happy_original_vm_agent_id => 'happy_original_vm_agent_id',
+          happy_original_vm_id => 'happy_original_vm_id',
+          happy_disk_id => 'happy_disk_id',
+
+          happy_hotswapped_vm_agent_id => 'happy_hotswapped_vm_agent_id',
+          happy_hotswapped_vm_id => 'happy_hotswapped_vm_id',
+
+          unhappy_disk_id => 'unhappy_disk_id',
+          unhappy_original_vm_agent_id => 'unhappy_original_vm_agent_id',
+          unhappy_original_vm_id => 'unhappy_original_vm_id',
+
+          unhappy_hotswapped_vm_agent_id => 'unhappy_hotswapped_vm_agent_id',
+          unhappy_hotswapped_vm_id => 'unhappy_hotswapped_vm_id',
+
+          unhappy_vm_final_deploy_agent_id => 'unhappy_vm_final_deploy_agent_id',
+          unhappy_vm_final_deploy_id => 'unhappy_vm_final_deploy_id',
+        }
+      end
+
+      it 'updates the correct vms', create_swap_delete: true do
+        expect(
+          [
+            *happy_vm_failing_deploy_invocations,
+            *happy_vm_final_deploy_invocations,
+          ],
+        ).to be_sequence_of_calls(
+          calls: [
+            # failing deploy
+            *create_vm_sequence(happy_hotswapped_vm_id, happy_hotswapped_vm_agent_id),
+            *update_settings_sequence(happy_hotswapped_vm_agent_id),
+
+            # final deploy
+            *prepare_sequence(happy_original_vm_agent_id),
+            *stop_jobs_sequence(happy_original_vm_agent_id),
+            *snapshot_disk_sequence(happy_original_vm_agent_id, happy_disk_id),
+            *detach_disk_sequence(happy_original_vm_id, happy_original_vm_agent_id, happy_disk_id),
+            *attach_disk_sequence(happy_hotswapped_vm_id, happy_hotswapped_vm_agent_id, happy_disk_id),
+            { target: 'agent', method: 'update_settings', agent_id: happy_hotswapped_vm_agent_id },
+            *list_disk_apply_sequence(happy_hotswapped_vm_agent_id),
+            *start_jobs_sequence(happy_hotswapped_vm_agent_id),
+          ],
+          reference: reference,
+        )
+
+        expect(
+          [
+            *unhappy_vm_failing_deploy_invocations,
+            *unhappy_vm_final_deploy_invocations,
+          ],
+        ).to be_sequence_of_calls(
+          calls: [
+            # failing deploy
+            *create_vm_sequence(unhappy_hotswapped_vm_id, unhappy_hotswapped_vm_agent_id),
+            *delete_vm_sequence(unhappy_hotswapped_vm_id),
+
+            # final deploy
+            *hotswap_update_sequence(
+              unhappy_original_vm_id,
+              unhappy_original_vm_agent_id,
+              unhappy_vm_final_deploy_id,
+              unhappy_vm_final_deploy_agent_id,
+              unhappy_disk_id,
+            ),
+            *start_jobs_sequence(unhappy_vm_final_deploy_agent_id),
+          ],
+          reference: reference,
+        )
+      end
+    end
+  end
 end

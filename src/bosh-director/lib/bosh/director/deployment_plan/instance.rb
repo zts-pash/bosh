@@ -77,12 +77,6 @@ module Bosh::Director
         @compilation = compilation
         @merged_cloud_properties = merged_cloud_properties
 
-        @configuration_hash = nil
-        @template_hashes = nil
-
-        @desired_variable_set = nil
-        @previous_variable_set = nil
-
         # This state is coming from the agent, we
         # only need networks and job_state from it.
         @current_state = instance_state || {}
