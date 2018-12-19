@@ -195,19 +195,25 @@ module Bosh::Director
         model = @deployment_manager.find_by_name(deployment_name)
         manifest = Manifest.load_from_model(model)
 
-        variable_rotation_manager = Bosh::Director::Api::VariableRotationManager.new(
+        variable_rotation_manager = Bosh::Director::Api::DeploymentVariableRotationManager.new(
           manifest.manifest_hash['variables'],
           deployment_name,
         )
 
         case action
         when 'plan'
-          { 'leaf_certificates' => variable_rotation_manager.deployment_leaf_certificates }.to_json
+          {
+            'leaf_certificates' => variable_rotation_manager.deployment_leaf_certificates,
+            'ca_certificates' => variable_rotation_manager.deployment_ca_certificates,
+          }.to_json
         when 'generate'
           case params[:type]
           when 'leaf'
             regenerated_leaf_certs = variable_rotation_manager.regenerate_leaf_certificates
             { 'regenerated_leaf_certificates' => regenerated_leaf_certs }.to_json
+          when 'ca'
+            transitional_cas = variable_rotation_manager.generate_transitional_cas
+            { 'transitional_ca_certificates' => transitional_cas }.to_json
           else
             status(400)
           end

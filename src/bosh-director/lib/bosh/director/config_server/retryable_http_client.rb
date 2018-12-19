@@ -16,6 +16,12 @@ module Bosh::Director::ConfigServer
       end
     end
 
+    def put(path, data, header = nil)
+      connection_retryable.retryer do
+        @http_client.put(path, data, header)
+      end
+    end
+
     private
 
     def connection_retryable

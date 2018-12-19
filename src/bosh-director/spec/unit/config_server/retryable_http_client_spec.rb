@@ -103,4 +103,12 @@ describe Bosh::Director::ConfigServer::RetryableHTTPClient do
       subject.post('uri-path', '{body}')
     end
   end
+
+  describe '#put' do
+    it 'should call `put` on the passed in http_client with some arguments' do
+      header = { 'key' => 'value' }
+      expect(http_client).to receive(:put).with('uri-path', '{body}', header).and_return(successful_response)
+      subject.put('uri-path', '{body}', header)
+    end
+  end
 end

@@ -39,6 +39,17 @@ module Bosh::Director::ConfigServer
       end
     end
 
+    def put(path, data, initheader = nil)
+      header = initheader || {}
+      auth_retryable.retryer do |try, _|
+        refresh_token if try > 1
+        header['Authorization'] = @token.auth_header
+        response = @http.put(path, data, header)
+        raise Bosh::Director::UAAAuthorizationError if response.kind_of? Net::HTTPUnauthorized
+        response
+      end
+    end
+
     private
 
     def refresh_token

@@ -22,7 +22,23 @@ module Bosh::Director::ConfigServer
 
     def post(body)
       uri = build_base_uri
-      @http.post(uri.path, JSON.dump(body), {'Content-Type' => 'application/json'})
+      @http.post(uri.path, JSON.dump(body), 'Content-Type' => 'application/json')
+    end
+
+    def get_with_path(path, name)
+      uri = URI.join(@config_server_uri, path)
+      uri.query = URI.escape("name=#{name}&current=true")
+      @http.get(uri.request_uri)
+    end
+
+    def post_with_path(path, body)
+      uri = URI.join(@config_server_uri, path)
+      @http.post(uri.path, JSON.dump(body), 'Content-Type' => 'application/json')
+    end
+
+    def put_with_path(path, body)
+      uri = URI.join(@config_server_uri, path)
+      @http.put(uri.path, JSON.dump(body), 'Content-Type' => 'application/json')
     end
 
     private
@@ -43,6 +59,18 @@ module Bosh::Director::ConfigServer
 
     def post(body)
       raise Bosh::Director::ConfigServerDisabledError, "Failed to generate variable '#{body['name']}' from config server: Director is not configured with a config server"
+    end
+
+    def post_with_path(path, body)
+      raise Bosh::Director::ConfigServerDisabledError, "Failed to generate variable '#{body['name']}' from config server: Director is not configured with a config server"
+    end
+
+    def put_with_path(path, body)
+      raise Bosh::Director::ConfigServerDisabledError, "Failed to generate variable '#{body['name']}' from config server: Director is not configured with a config server"
+    end
+
+    def get_with_path(path, name)
+      raise Bosh::Director::ConfigServerDisabledError, "Failed to generate variable '#{name}' from config server: Director is not configured with a config server"
     end
   end
 end

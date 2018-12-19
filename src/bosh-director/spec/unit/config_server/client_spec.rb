@@ -931,6 +931,112 @@ module Bosh::Director::ConfigServer
                   expect(client.interpolate_with_versioning(raw_hash, variable_set_model)).to eq(interpolated_hash)
                 end
 
+                context 'if the variable is of type certificate' do
+                  let(:mock_config_store) do
+                    {
+                      prepend_namespace('integer_placeholder') => generate_success_response(integer_placeholder.to_json),
+                      prepend_namespace('nil_placeholder') => generate_success_response(nil_placeholder.to_json),
+                      prepend_namespace('empty_placeholder') => generate_success_response(empty_placeholder.to_json),
+                      prepend_namespace('string_placeholder') => generate_success_response(string_placeholder.to_json),
+                      prepend_namespace('hash_placeholder') => generate_success_response(hash_placeholder.to_json),
+                      prepend_namespace('certificate_placeholder') => generate_success_response(certificate_placeholder.to_json),
+                    }
+                  end
+
+                  context 'there is one value for the certificate' do
+                    let(:certificate_placeholder) do
+                      {
+
+                        'data' => [
+                          {
+                            'name' => prepend_namespace('certificate_placeholder').to_s,
+                            'value' => { 'ca' => 'ca_value', 'certificate' => 'cert_value', 'private_key' => 'pkey'},
+                            'type' => 'certificate',
+                            'id' => '6',
+                          },
+                        ],
+                      }
+                    end
+
+                    before do
+                      raw_hash['properties'] = {
+                        'certificate_allowed' => '((certificate_placeholder))',
+                      }
+
+                      interpolated_hash['properties'] = {
+                        'certificate_allowed' => {
+                          'ca' => 'ca_value',
+                          'certificate' => 'cert_value',
+                          'private_key' => 'pkey',
+                        },
+                      }
+                    end
+
+                    it 'should return the certificate' do
+                      expect(client.interpolate_with_versioning(raw_hash, variable_set_model)).to eq(interpolated_hash)
+                    end
+                  end
+
+                  context 'there are two values for the certificate' do
+                    let(:certificate_placeholder) do
+                      {
+
+                        'data' => [
+                          {
+                            'name' => prepend_namespace('certificate_placeholder').to_s,
+                            'value' =>
+                              {
+                                'ca' => 'ca1',
+                                'certificate' => 'certificate1',
+                                'private_key' => 'key1',
+                              },
+                            'transitional' => true,
+                            'type' => 'certificate',
+                            'id' => '6',
+                          },
+                          {
+                            'name' => prepend_namespace('certificate_placeholder').to_s,
+                            'value' =>
+                              {
+                                'ca' => 'ca2',
+                                'certificate' => 'certificate2',
+                                'private_key' => 'key2',
+                              },
+                            'transitional' => false,
+                            'type' => 'certificate',
+                            'id' => '7',
+                          },
+                        ],
+                      }
+                    end
+
+                    before do
+                      mock_config_store.each do |name, value|
+                        result_body = JSON.parse(value.body)
+
+                        allow(http_client).to receive(:get).with(name).and_return(generate_success_response(result_body.to_json))
+                        allow(variable_set_model).to receive(:add_variable).with(variable_name: name, variable_id: '7')
+                      end
+
+                      raw_hash['properties'] = {
+                        'certificate_allowed' => '((certificate_placeholder))',
+                      }
+
+                      interpolated_hash['properties'] = {
+                        'certificate_allowed' => {
+                          'ca' => 'ca2ca1',
+                          'certificate' => 'certificate2',
+                          'private_key' => 'key2',
+                        },
+                      }
+                    end
+
+                    it 'should return the concatenated values for ca' do
+                      expect(client.interpolate_with_versioning(raw_hash, variable_set_model)).to eq(interpolated_hash)
+                    end
+                  end
+                end
+
                 context 'when the variable was added to the current set by another thread' do
                   before do
                     mock_config_store.each do |name, value|
@@ -2176,6 +2282,108 @@ module Bosh::Director::ConfigServer
 
         expect(client.interpolated_versioned_variables_changed?(settings_hash, settings_hash,
                                                                 previous_variable_set, next_variable_set)).to be_truthy
+      end
+    end
+
+    describe 'certificates' do
+      let(:get_cert_body) do
+        {
+          'certificates' => [
+            {
+              'id' => 'cert-id',
+              'name' => '/some_ca',
+            },
+          ],
+        }
+      end
+      let(:get_cert_values_body) do
+        {
+          'data' => [
+            {
+              'id' => 'old-cert-version',
+              'transitional' => false,
+            },
+            {
+              'id' => 'new-cert-version',
+              'transitional' => true,
+            },
+          ],
+        }
+      end
+
+      before do
+        allow(http_client).to receive(:get_with_path)
+          .and_return(generate_success_response(get_cert_body.to_json))
+        allow(http_client).to receive(:post_with_path)
+          .and_return(generate_success_response({}.to_json))
+        allow(http_client).to receive(:get)
+          .and_return(generate_success_response(get_cert_values_body.to_json))
+        allow(http_client).to receive(:put_with_path)
+          .and_return(generate_success_response({}.to_json))
+      end
+
+      context 'regenerate_transitional_ca' do
+        it 'generates a new CA and sets as transitional' do
+          expect(http_client).to receive(:get_with_path)
+            .with('v1/certificates', '/some_ca')
+            .and_return(generate_success_response(get_cert_body.to_json))
+          expect(http_client).to receive(:post_with_path)
+            .with('v1/certificates/cert-id/regenerate', 'set_as_transitional' => true)
+            .and_return(generate_success_response({}.to_json))
+
+          client.regenerate_transitional_ca('/some_ca')
+        end
+
+        it 'moves transitional flag to old version' do
+          expect(http_client).to receive(:get)
+            .with('/some_ca')
+          expect(http_client).to receive(:put_with_path)
+            .with('v1/certificates/cert-id/update_transitional_version', 'version' => 'old-cert-version')
+
+          client.regenerate_transitional_ca('/some_ca')
+        end
+
+        it 'transitions to new CA' do
+          expect(http_client).to receive(:put_with_path)
+            .with('v1/certificates/cert-id/update_transitional_version', { 'version' => nil })
+
+          client.transition_to_new_ca('/some_ca')
+        end
+
+        context 'invalid certificates returned' do
+          let(:get_cert_values_body) do
+            {
+              'data' => [
+                {
+                  'id' => '1337',
+                  'transitional' => true,
+                },
+                {
+                  'id' => '1338',
+                  'transitional' => true,
+                },
+              ],
+            }
+          end
+
+          it 'returns an error' do
+            expect { client.regenerate_transitional_ca('/some_ca') }.to raise_error(Bosh::Director::ConfigServerFetchError)
+          end
+        end
+      end
+
+
+      context 'force_regenerate_value' do
+        it 'forces overwrite mode' do
+          expect(http_client).to receive(:post).with(
+            'name' => 'cert',
+            'type' => 'certificate',
+            'parameters' => {},
+            'mode' => 'overwrite',
+          ).and_return(generate_success_response({}.to_json))
+
+          client.force_regenerate_value('cert', 'certificate', {})
+        end
       end
     end
 

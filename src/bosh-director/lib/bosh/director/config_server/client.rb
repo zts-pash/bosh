@@ -94,7 +94,7 @@ module Bosh::Director::ConfigServer
 
         if variable['type'] == 'certificate'
           has_ca = variable['options'] && variable['options']['ca']
-          generate_ca(variable, deployment_name) if has_ca
+          generate_ca_name(variable, deployment_name) if has_ca
           variable = generate_links(variable, deployment_model, use_link_dns_names)
         end
 
@@ -116,6 +116,11 @@ module Bosh::Director::ConfigServer
       name_root = get_name_root(name)
       fetched_variable = get_by_id(id, name_root)
 
+      if fetched_variable['type'] == 'certificate'
+        # fetch the other one with
+        #GET /api/v1/certificiate/id - {current_trusted_things: ca2+ca1}
+      end
+
       extract_variable_value(name, fetched_variable['value'])
     end
 
@@ -123,9 +128,108 @@ module Bosh::Director::ConfigServer
       generate_value(name, type, options, GENERATION_MODE_OVERWRITE)
     end
 
+    def regenerate_transitional_ca(name)
+      certificate_id = certificate_id(name)
+      generate_transitional_ca(certificate_id)
+    end
+
+    def transition_to_new_ca(name)
+      certificate_id = certificate_id(name)
+      previous_version = previous_transitional_cert_version(name)
+      update_transitional_flag(certificate_id, previous_version)
+    end
+
+    def remove_old_transitional_ca(name)
+      certificate_id = certificate_id(name)
+      remove_transitional(certificate_id)
+    end
+
     private
 
-    def generate_ca(variable, deployment_name)
+    def rotating_ca?(response)
+      response.count == 2 && response.first['type'] == 'certificate'
+    end
+
+    def handle_transitional_ca(response)
+      value = {}
+      first_value = extract_variable_value(name, response.first['value'])
+      second_value = extract_variable_value(name, response[1]['value'])
+
+      # After #regenerate_transitional_ca the transitional flag is on the new CA
+      # The concatenate CA order: new CA + old CA
+      newest_value = response.first['transitional'] ? first_value : second_value
+      previous_value = response.first['transitional'] ? second_value : first_value
+      id = response['transitional'] ? response[1]['id'] : id
+
+      value['ca'] = newest_value['ca'] + previous_value['ca']
+      value['certificate'] = newest_value['certificate']
+      value['private_key'] = newest_value['private_key']
+      [id, value]
+    end
+
+    def generate_transitional_ca(cert_id)
+      response = @config_server_http_client.post_with_path(
+        "v1/certificates/#{cert_id}/regenerate",
+        'set_as_transitional' => true,
+      )
+      raise Bosh::Director::ConfigServerFetchError,
+            "Failed to generate new CA and set transitional for certificate ID #{cert_id}" unless response.is_a? Net::HTTPOK
+    end
+
+    def update_transitional_flag(cert_id, old_version)
+      response = @config_server_http_client.put_with_path(
+        "v1/certificates/#{cert_id}/update_transitional_version",
+        'version' => old_version,
+      )
+
+      raise Bosh::Director::ConfigServerMissingName,
+            "Could not move transitional flag for certificate ID #{cert_id}: #{response.body}" unless response.is_a? Net::HTTPOK
+    end
+
+    def previous_transitional_cert_version(name)
+      response = @config_server_http_client.get(name)
+      begin
+        result = JSON.parse(response.body)
+      rescue JSON::ParserError
+        raise Bosh::Director::ConfigServerFetchError, "Unable to get variable for CA #{name}"
+      end
+
+      certs = result['data'].reject { |cert| cert['transitional'] }
+      raise Bosh::Director::ConfigServerFetchError,
+            'Invalid number of transitional certificates' if certs.empty? || certs.count > 1
+
+      certs.first['id']
+    end
+
+    def certificate_id(name)
+      response = @config_server_http_client.get_with_path(
+        'v1/certificates',
+        name,
+      )
+
+      raise Bosh::Director::ConfigServerFetchError,
+            "Unable to get ID for CA #{name}" unless response.is_a? Net::HTTPOK
+
+      begin
+        result = JSON.parse(response.body)
+      rescue JSON::ParserError
+        raise Bosh::Director::ConfigServerFetchError, 'Not a valid JSON'
+      end
+
+      result['certificates'].first['id']
+    end
+
+    def remove_transitional(certificate_id)
+      response = @config_server_http_client.put_with_path(
+        "v1/certificates/#{certificate_id}/update_transitional_version",
+        { 'version' => nil },
+      )
+
+      raise Bosh::Director::ConfigServerFetchError,
+            "Unable to remove transitional version for CA ID #{certificate_id}" unless response.is_a? Net::HTTPOK
+    end
+
+    def generate_ca_name(variable, deployment_name)
       variable['options']['ca'] = ConfigServerHelper.add_prefix_if_not_absolute(
         variable['options']['ca'],
         @director_name,
@@ -139,7 +243,7 @@ module Bosh::Director::ConfigServer
       return variable if links.empty?
 
       start_options = variable['options'] || {}
-      variable['options'] = links.reduce(start_options) do |options, (type, link)|
+      variable['options'] = links.each_with_object(start_options) do |(type, link), options|
         link_url = generate_dns_address_from_link(link, use_link_dns_names)
 
         if type == 'alternative_name'
@@ -149,7 +253,6 @@ module Bosh::Director::ConfigServer
           options[type] ||= link_url
         end
 
-        options
       end
 
       variable
@@ -231,23 +334,23 @@ module Bosh::Director::ConfigServer
           name_root = get_name_root(name)
 
           saved_variable_mapping = variable_set.find_variable_by_name(name_root)
+          variable_id, variable_value = get_variable_id_and_value_by_name(name)
 
           if saved_variable_mapping.nil?
             raise Bosh::Director::ConfigServerInconsistentVariableState, "Expected variable '#{name_root}' to be already versioned in deployment '#{deployment_name}'" unless variable_set.writable
 
-            variable_id, variable_value = get_variable_id_and_value_by_name(name)
-
             begin
               save_variable(name_root, variable_set, variable_id)
-              config_values[variable] = variable_value
             rescue Sequel::UniqueConstraintViolation
-              saved_variable_mapping = variable_set.find_variable_by_name(name_root)
-              config_values[variable] = get_variable_value_by_id(saved_variable_mapping.variable_name, saved_variable_mapping.variable_id)
+              # another instance has already taken care of this.
             end
 
           else
+            # raise Bosh::Director::ConfigServerInconsistentVariableState, "IDs don't match" if saved_variable_mapping.variable_id != variable_id
             config_values[variable] = get_variable_value_by_id(name, saved_variable_mapping.variable_id)
           end
+
+          config_values[variable] = variable_value
         rescue Bosh::Director::ConfigServerFetchError, Bosh::Director::ConfigServerMissingName => e
           errors << e
         end
@@ -370,10 +473,16 @@ module Bosh::Director::ConfigServer
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data to be non empty array" if response_data.empty?
 
         fetched_variable = response_data[0]
+
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'id'" unless fetched_variable.key?('id')
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected data[0] to have key 'value'" unless fetched_variable.key?('value')
 
-        return fetched_variable['id'], extract_variable_value(name, fetched_variable['value'])
+        value = extract_variable_value(name, fetched_variable['value'])
+        id = fetched_variable['id']
+
+        handle_transitional_ca(response_data) if rotating_ca?(response_data)
+
+        return id, value
       elsif response.is_a? Net::HTTPNotFound
         raise Bosh::Director::ConfigServerMissingName, "Failed to find variable '#{name_root}' from config server: HTTP Code '404', Error: '#{response_body['error']}'"
       else
@@ -476,7 +585,7 @@ module Bosh::Director::ConfigServer
     end
 
     def get_by_id(id, name_root)
-      return @cache_by_id[id] if @cache_by_id.has_key?(id)
+      return @cache_by_id[id] if @cache_by_id.key?(id)
 
       response = @config_server_http_client.get_by_id(id)
 
@@ -486,15 +595,15 @@ module Bosh::Director::ConfigServer
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' with id '#{id}' from config server: Invalid JSON response"
       end
 
-      if response.kind_of? Net::HTTPNotFound
+      if response.is_a? Net::HTTPNotFound
         raise Bosh::Director::ConfigServerMissingName, "Failed to find variable '#{name_root}' with id '#{id}' from config server: HTTP Code '404', Error: '#{parsed_response['error']}'"
-      elsif !response.kind_of? Net::HTTPOK
+      elsif !response.is_a? Net::HTTPOK
         raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' with id '#{id}' from config server: HTTP Code '#{response.code}', Error: '#{parsed_response['error']}'"
       end
 
       raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to be a hash, got '#{parsed_response.class}'" unless parsed_response.is_a?(Hash)
-      raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'id'" unless parsed_response.has_key?('id')
-      raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'value'" unless parsed_response.has_key?('value')
+      raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'id'" unless parsed_response.key?('id')
+      raise Bosh::Director::ConfigServerFetchError, "Failed to fetch variable '#{name_root}' from config server: Expected response to have key 'value'" unless parsed_response.key?('value')
 
       @cache_by_id[parsed_response['id']] = parsed_response
       parsed_response

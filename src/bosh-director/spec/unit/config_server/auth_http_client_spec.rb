@@ -123,4 +123,21 @@ describe Bosh::Director::ConfigServer::AuthHTTPClient do
       end
     end
   end
+
+  describe '#put' do
+    before do
+      allow(http_client).to receive(:use_ssl=).with(true)
+      allow(http_client).to receive(:verify_mode=).with(OpenSSL::SSL::VERIFY_PEER)
+      allow(http_client).to receive(:cert_store=)
+    end
+
+    it 'should add "Authorization" header and call through to actual http client' do
+      expected_headers = {
+        'Key' => 'value',
+        'Authorization' => 'fake-auth-header'
+      }
+      expect(http_client).to receive(:put).with("url", 'data!!', expected_headers).and_return(successful_response)
+      subject.put("url", 'data!!', {'Key' => 'value'})
+    end
+  end
 end

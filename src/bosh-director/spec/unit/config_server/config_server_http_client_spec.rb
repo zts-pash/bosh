@@ -50,6 +50,30 @@ module Bosh::Director::ConfigServer
         subject.post(request_body)
       end
     end
+
+    describe '#post_with_path' do
+      let(:request_body) do
+        { 'stuff' => 'hello' }
+      end
+
+      it 'makes a POST request with the custom path' do
+        expect(http_client).to receive(:post).with(
+          '/v1/somewhere_i_belong',
+          JSON.dump(request_body),
+          'Content-Type' => 'application/json',
+        )
+        subject.post_with_path('v1/somewhere_i_belong', request_body)
+      end
+    end
+
+    describe '#get_with_path' do
+      it 'makes a GET request with the custom path and name' do
+        expect(http_client).to receive(:get).with(
+          '/v1/somewhere_else?name=thing&current=true',
+        )
+        subject.get_with_path('v1/somewhere_else', 'thing')
+      end
+    end
   end
 
   describe ConfigServerDisabledHTTPClient do
