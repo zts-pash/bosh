@@ -148,6 +148,11 @@ require 'bosh/director/links/links_manager'
 require 'bosh/director/links/links_error_builder'
 require 'bosh/director/links/links_parser'
 
+require 'bosh/director/metrics/models'
+require 'bosh/director/metrics/prometheus/client'
+require 'bosh/director/metrics/prometheus/filters'
+require 'bosh/director/metrics/prometheus/collectors'
+
 require 'bosh/director/disk/persistent_disk_comparators'
 
 require 'bosh/director/manifest/instance_group_config'

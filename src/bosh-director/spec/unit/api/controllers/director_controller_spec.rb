@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'rack/test'
+require 'prometheus/middleware/exporter'
 
 module Bosh::Director
   module Api
@@ -93,6 +94,25 @@ module Bosh::Director
               File.delete(config_file)
               expect(last_response.status).to eq(500)
             end
+          end
+        end
+      end
+
+      context 'director/metrics' do
+        context 'when a non-authorized user makes the request' do
+          it 'should fail with unauthorized error' do
+            get '/metrics'
+            expect(last_response.status).to eq(401)
+          end
+        end
+
+        context 'when the user is authorized' do
+          before { authorize('admin', 'admin') }
+
+          it 'should work' do
+            get '/metrics'
+            expect(last_response.status).to eq(200)
+            expect(JSON.parse(last_response.body)).to eq({})
           end
         end
       end

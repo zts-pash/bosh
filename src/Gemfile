@@ -7,6 +7,7 @@ gem 'bosh-monitor', path: 'bosh-monitor'
 gem 'bosh-registry', path: 'bosh-registry'
 gem 'bosh-template', path: 'bosh-template'
 gem 'bosh_common', path: 'bosh_common'
+gem 'prometheus-client-model', path: 'prometheus-client-model'
 
 gem 'rake', '~>10.0'
 

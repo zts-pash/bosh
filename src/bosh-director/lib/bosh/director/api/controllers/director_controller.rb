@@ -29,6 +29,10 @@ module Bosh::Director
         end
         json_encode(cert_expiration_info)
       end
+
+      get '/metrics', scope: :read do
+        json_encode({})
+      end
     end
   end
 end
