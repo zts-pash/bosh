@@ -1,16 +1,32 @@
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
+
 package cpi;
 
 service CPI {
   rpc Info (Request) returns (Response);
+  rpc CreateVM (Request) returns (Response);
 }
 
 message Request {
-  string type = 1;
+  string type = 1; // TODO: rename this (cpi type)
   int32 stemcell_api_version = 2;
   string director_uuid = 3;
-  bytes properties = 4; // json
+  google.protobuf.Struct properties = 4;
+
+  oneof arguments {
+    CreateVMArguments create_vm_arguments = 5;
+  }
+}
+
+message CreateVMArguments {
+  string agent_id = 1;
+  string stemcell_id = 2;
+  repeated string disk_cids = 3;
+  google.protobuf.Struct networks = 4;
+  google.protobuf.Struct cloud_properties = 5;
+  google.protobuf.Struct env = 6;
 }
 
 message Response {
@@ -26,7 +42,7 @@ message Response {
 
   oneof result {
     InfoResult info_result = 5;
-    TestResult test_result = 6;
+    CreateVMResult create_vm_result = 6;
   }
 }
 
@@ -35,6 +51,7 @@ message InfoResult {
   repeated string stemcell_formats = 2;
 }
 
-message TestResult {
-  string potato = 1;
+message CreateVMResult {
+  string vm_cid = 1;
+  google.protobuf.Struct networks = 2;
 }

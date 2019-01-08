@@ -3,12 +3,24 @@
 
 require 'google/protobuf'
 
+require 'google/protobuf/struct_pb'
 Google::Protobuf::DescriptorPool.generated_pool.build do
   add_message "cpi.Request" do
     optional :type, :string, 1
     optional :stemcell_api_version, :int32, 2
     optional :director_uuid, :string, 3
-    optional :properties, :bytes, 4
+    optional :properties, :message, 4, "google.protobuf.Struct"
+    oneof :arguments do
+      optional :create_vm_arguments, :message, 5, "cpi.CreateVMArguments"
+    end
+  end
+  add_message "cpi.CreateVMArguments" do
+    optional :agent_id, :string, 1
+    optional :stemcell_id, :string, 2
+    repeated :disk_cids, :string, 3
+    optional :networks, :message, 4, "google.protobuf.Struct"
+    optional :cloud_properties, :message, 5, "google.protobuf.Struct"
+    optional :env, :message, 6, "google.protobuf.Struct"
   end
   add_message "cpi.Response" do
     optional :error, :message, 1, "cpi.Response.Error"
@@ -16,7 +28,7 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :log, :string, 3
     oneof :result do
       optional :info_result, :message, 5, "cpi.InfoResult"
-      optional :test_result, :message, 6, "cpi.TestResult"
+      optional :create_vm_result, :message, 6, "cpi.CreateVMResult"
     end
   end
   add_message "cpi.Response.Error" do
@@ -28,15 +40,17 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :api_version, :int32, 1
     repeated :stemcell_formats, :string, 2
   end
-  add_message "cpi.TestResult" do
-    optional :potato, :string, 1
+  add_message "cpi.CreateVMResult" do
+    optional :vm_cid, :string, 1
+    optional :networks, :message, 2, "google.protobuf.Struct"
   end
 end
 
 module Cpi
   Request = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Request").msgclass
+  CreateVMArguments = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.CreateVMArguments").msgclass
   Response = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Response").msgclass
   Response::Error = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Response.Error").msgclass
   InfoResult = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.InfoResult").msgclass
-  TestResult = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.TestResult").msgclass
+  CreateVMResult = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.CreateVMResult").msgclass
 end

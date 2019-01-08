@@ -15,6 +15,7 @@ module Cpi
       self.service_name = 'cpi.CPI'
 
       rpc :Info, Request, Response
+      rpc :CreateVM, Request, Response
     end
 
     Stub = Service.rpc_stub_class

@@ -78,7 +78,7 @@ module Bosh::Clouds
       request = Cpi::Request.new(
         type: @cpi_path,
         director_uuid: @director_uuid,
-        properties: @properties_from_cpi_config.to_json,
+        properties: @properties_from_cpi_config,
       )
       request.stemcell_api_version = @stemcell_api_version if @stemcell_api_version
 
