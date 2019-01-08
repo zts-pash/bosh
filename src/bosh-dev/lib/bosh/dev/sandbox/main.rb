@@ -44,6 +44,7 @@ module Bosh::Dev::Sandbox
     attr_reader :name
     attr_reader :health_monitor_process
     attr_reader :scheduler_process
+    attr_reader :cpi_process
 
     attr_reader :director_service
     attr_reader :port_provider
@@ -140,6 +141,15 @@ module Bosh::Dev::Sandbox
         @logger,
       )
 
+      @cpi_executor_addr = "0.0.0.0:#{cpi_executor_port}"
+      # @cpi_executor_addr = "unix://#{sandbox_path('cpi.socket')}"
+      system('go install github.com/cloudfoundry/bosh-cpi')
+      @cpi_process = Service.new(
+        %W[bosh-cpi -net tcp -addr #{@cpi_executor_addr}],
+        {output: "#{base_log_path}.cpi-executor.out"},
+        @logger,
+      )
+
       # Note that this is not the same object
       # as dummy cpi used inside bosh-director process
       @cpi = Bosh::Clouds::Dummy.new(
@@ -197,6 +207,7 @@ module Bosh::Dev::Sandbox
       @director_name = dir_config.director_name
 
       @director_service.start(dir_config)
+      @cpi_process.start
     end
 
     def director_name
@@ -234,6 +245,7 @@ module Bosh::Dev::Sandbox
         users_in_manifest: @users_in_manifest,
         verify_multidigest_path: verify_multidigest_path,
         preferred_cpi_api_version: @dummy_cpi_api_version,
+        cpi_executor_addr: @cpi_executor_addr,
       }
 
       DirectorConfig.new(attributes, @port_provider)
@@ -269,6 +281,7 @@ module Bosh::Dev::Sandbox
       @cpi.kill_agents
 
       @director_service.stop
+      @cpi_process.stop
 
       @nginx_service.stop
       @nats_process.stop
@@ -323,6 +336,10 @@ module Bosh::Dev::Sandbox
 
     def director_ruby_port
       @director_ruby_port ||= @port_provider.get_port(:director_ruby)
+    end
+
+    def cpi_executor_port
+      @cpi_executor_port ||= @port_provider.get_port(:cpi_executor)
     end
 
     def sandbox_root

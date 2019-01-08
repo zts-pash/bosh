@@ -42,7 +42,8 @@ module Bosh::Clouds
 
     attr_accessor :request_cpi_api_version
 
-    def initialize(cpi_path, director_uuid, logger, options = {})
+    def initialize(client, cpi_path, director_uuid, logger, options = {})
+      @client = client
       @cpi_path = cpi_path
       @director_uuid = director_uuid
       @logger = Bosh::Director::TaggedLogger.new(logger, 'external-cpi')
@@ -72,7 +73,31 @@ module Bosh::Clouds
     def get_disks(*arguments); invoke_cpi_method(__method__.to_s, *arguments); end
     def ping(*arguments); invoke_cpi_method(__method__.to_s, *arguments); end
     def calculate_vm_cloud_properties(*arguments); invoke_cpi_method(__method__.to_s, *arguments); end
-    def info; invoke_cpi_method(__method__.to_s); end
+
+    def info
+      # invoke_cpi_method(__method__.to_s)
+
+      # vm_context = {'vm' => {'stemcell' => { 'api_version' => @stemcell_api_version }}}
+      # context.merge!(vm_context) unless @stemcell_api_version.nil?
+      # context.merge!(@properties_from_cpi_config) unless @properties_from_cpi_config.nil?
+      request = Cpi::BaseRequest.new(
+        type: @cpi_path,
+        director_uuid: @director_uuid,
+        properties: @properties_from_cpi_config.to_json,
+      )
+      request.stemcell_api_version = @stemcell_api_version if @stemcell_api_version
+
+      resp = @client.info(request)
+
+      save_cpi_log(resp.base.log)
+      # save_cpi_log(stderr)
+
+      if !resp.base.error.empty?
+        handle_error(resp.base.error, 'info', 'potato')
+      end
+
+      { 'api_version' => resp.api_version, 'stemcell_formats' => resp.stemcell_formats}
+    end
 
     private
 

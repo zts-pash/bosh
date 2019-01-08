@@ -21,6 +21,7 @@ module Bosh::Director
     def initialize(parsed_cpi_config)
       @parsed_cpi_config = parsed_cpi_config
       @director_uuid = Config.uuid
+      @client = Config.cpi_rpc
       @logger = Config.logger
     end
 
@@ -48,6 +49,7 @@ module Bosh::Director
       else
         cpi_config = get_cpi_config(cpi_name)
         cloud = Bosh::Clouds::ExternalCpi.new(
+          @client,
           cpi_config.exec_path,
           @director_uuid,
           @logger,
@@ -71,6 +73,7 @@ module Bosh::Director
 
     def get_default_cloud(stemcell_api_version)
       Bosh::Clouds::ExternalCpi.new(
+        @client,
         Config.cloud_options['provider']['path'],
         @director_uuid,
         @logger,

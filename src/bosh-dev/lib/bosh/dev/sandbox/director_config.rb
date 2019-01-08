@@ -39,7 +39,8 @@ module Bosh::Dev::Sandbox
                 :user_authentication,
                 :users_in_manifest,
                 :verify_multidigest_path,
-                :preferred_cpi_api_version
+                :preferred_cpi_api_version,
+                :cpi_executor_addr
 
     def initialize(attrs, port_provider)
       @director_name = 'TestDirector'
@@ -96,6 +97,8 @@ module Bosh::Dev::Sandbox
       @agent_wait_timeout = attrs.fetch(:agent_wait_timeout, 600)
       @preferred_cpi_api_version = attrs.fetch(:preferred_cpi_api_version)
       @keep_unreachable_vms = attrs.fetch(:keep_unreachable_vms, false)
+
+      @cpi_executor_addr = attrs.fetch(:cpi_executor_addr)
     end
 
     def render(template_path)

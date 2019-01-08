@@ -83,6 +83,7 @@ module Bosh::Director
         @compiled_package_cache_options = nil
 
         @nats_rpc = nil
+        @ncpi_rpc = nil
       end
 
       def configure(config)
@@ -144,6 +145,8 @@ module Bosh::Director
         @nats_client_ca_certificate_path = config['nats']['client_ca_certificate_path']
         @nats_client_ca_private_key_path = config['nats']['client_ca_private_key_path']
         @nats_server_ca = File.read(@nats_server_ca_path)
+
+        @cpi_executor_addr = config['grpc']['cpi_executor_addr']
 
         @director_certificate_expiry_json_path = config['director_certificate_expiry_json_path']
 
@@ -409,6 +412,13 @@ module Bosh::Director
           end
         end
         @nats_rpc
+      end
+
+      def cpi_rpc
+        @cpi_rpc ||= begin
+                       require 'cpi/client'
+                       Cpi::CPI::Stub.new(@cpi_executor_addr, :this_channel_is_insecure)
+                     end
       end
 
       def threaded
