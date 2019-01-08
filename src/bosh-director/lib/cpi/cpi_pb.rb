@@ -4,25 +4,39 @@
 require 'google/protobuf'
 
 Google::Protobuf::DescriptorPool.generated_pool.build do
-  add_message "cpi.BaseRequest" do
+  add_message "cpi.Request" do
     optional :type, :string, 1
     optional :stemcell_api_version, :int32, 2
     optional :director_uuid, :string, 3
     optional :properties, :bytes, 4
   end
-  add_message "cpi.BaseResponse" do
-    optional :error, :string, 1
-    optional :log, :string, 2
+  add_message "cpi.Response" do
+    optional :error, :message, 1, "cpi.Response.Error"
+    optional :request_id, :string, 2
+    optional :log, :string, 3
+    oneof :result do
+      optional :info_result, :message, 5, "cpi.InfoResult"
+      optional :test_result, :message, 6, "cpi.TestResult"
+    end
   end
-  add_message "cpi.InfoResponse" do
-    optional :base, :message, 1, "cpi.BaseResponse"
-    optional :api_version, :int32, 2
-    repeated :stemcell_formats, :string, 3
+  add_message "cpi.Response.Error" do
+    optional :type, :string, 1
+    optional :message, :string, 2
+    optional :ok_to_retry, :bool, 3
+  end
+  add_message "cpi.InfoResult" do
+    optional :api_version, :int32, 1
+    repeated :stemcell_formats, :string, 2
+  end
+  add_message "cpi.TestResult" do
+    optional :potato, :string, 1
   end
 end
 
 module Cpi
-  BaseRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.BaseRequest").msgclass
-  BaseResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.BaseResponse").msgclass
-  InfoResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.InfoResponse").msgclass
+  Request = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Request").msgclass
+  Response = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Response").msgclass
+  Response::Error = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.Response.Error").msgclass
+  InfoResult = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.InfoResult").msgclass
+  TestResult = Google::Protobuf::DescriptorPool.generated_pool.lookup("cpi.TestResult").msgclass
 end

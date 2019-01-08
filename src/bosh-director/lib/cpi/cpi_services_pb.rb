@@ -14,7 +14,7 @@ module Cpi
       self.unmarshal_class_method = :decode
       self.service_name = 'cpi.CPI'
 
-      rpc :Info, BaseRequest, InfoResponse
+      rpc :Info, Request, Response
     end
 
     Stub = Service.rpc_stub_class

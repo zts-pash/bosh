@@ -1,0 +1,14 @@
+{
+ "dir": "/home/luan/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-11149/sandbox/bosh_cloud_test",
+ "nats":  "nats://127.0.0.1:61000",
+ "agent": {
+   "blobstore": {
+     "provider": "local",
+       "options": {
+         "blobstore_path": "/home/luan/workspace/src/github.com/cloudfoundry/bosh/src/tmp/integration-tests-workspace/pid-11149/sandbox/bosh_test_blobstore"
+      }
+    }
+  },
+  "api_version": 1
+  
+}

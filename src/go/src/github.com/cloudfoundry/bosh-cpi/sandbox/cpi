@@ -1,0 +1,9 @@
+#!/bin/bash
+
+read -r INPUT
+
+export PATH=/home/luan/.rbenv/versions/2.4.5/lib/ruby/gems/2.4.0/bin:/home/luan/.rbenv/versions/2.4.5/bin:/usr/lib/rbenv/libexec:/home/luan/workspace/src/github.com/cloudfoundry/bosh/bin:/home/luan/workspace/src/github.com/cloudfoundry/bosh/src/go/bin:/home/luan/.rbenv/shims:/home/luan/workspace/bin:/usr/local/go/bin:/home/luan/bin:/usr/local/bin:/home/luan/.nvm/versions/node/v11.6.0/bin:/opt/google-cloud-sdk/bin:/usr/bin:/bin:/usr/local/sbin:/opt/android-sdk/emulator:/var/lib/flatpak/exports/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/luan/.fzf/bin:$PATH
+export GEM_HOME=/home/luan/.rbenv/versions/2.4.5/lib/ruby/gems/2.4.0:$GEM_HOME
+export GEM_PATH=/home/luan/.rbenv/versions/2.4.5/lib/ruby/gems/2.4.0:/home/luan/.gem/ruby/2.4.0:$GEM_PATH
+
+echo $INPUT | /home/luan/workspace/src/github.com/cloudfoundry/bosh/src/bosh-director/bin/dummy_cpi sandbox/cpi.json

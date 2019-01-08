@@ -6,11 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os/exec"
 
 	pb "github.com/cloudfoundry/bosh-cpi/cpi"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -23,80 +26,25 @@ var (
 // server is used to implement helloworld.GreeterServer.
 type server struct{}
 
-func cpi(path string, input Request) (*pb.BaseResponse, map[string]interface{}, error) {
-	cmd := exec.Command(path)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		log.Println("failed to setup cpi command stdin pipe", err)
-		return nil, nil, err
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Println("failed to setup cpi command stdout pipe", err)
-		return nil, nil, err
-	}
-	defer stdout.Close()
-
-	cmd.Start()
-
-	encoder := json.NewEncoder(stdin)
-	encoder.Encode(input)
-	stdin.Close()
-
-	decoder := json.NewDecoder(stdout)
-	response := map[string]interface{}{}
-	err = decoder.Decode(&response)
-	if err != nil {
-		log.Println("failed to decode cpi response", err)
-		return nil, nil, err
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		log.Println("failed to run cpi command", err)
-		return nil, nil, err
-	}
-
-	log.Printf("FROM CPI: %+v\n", response)
-
-	base := &pb.BaseResponse{}
-	if log, ok := response["log"]; ok {
-		base.Log, _ = log.(string)
-	}
-	if e, ok := response["error"]; ok {
-		base.Error, _ = e.(string)
-	}
-	var result map[string]interface{}
-	if r, ok := response["result"]; ok {
-		result, _ = r.(map[string]interface{})
-	}
-
-	return base, result, nil
+type CPIError struct {
+	Type      string `json:"type"`
+	Message   string `json:"message"`
+	OkToRetry bool   `json:"ok_to_retry"`
 }
 
-// def request_json(method_name, arguments, context)
-//   request_hash = {
-//     'method' => method_name,
-//     'arguments' => arguments,
-//     'context' => context,
-//   }
+type CPIResponse struct {
+	Log   string    `json:"request_id"`
+	Error *CPIError `json:"error"`
 
-//   request_hash['api_version'] = request_cpi_api_version unless request_cpi_api_version.nil?
-//   JSON.dump(request_hash)
-// end
-
-type Request struct {
-	Method string `json:"method"`
-	// arguments []string `json:"arguments"`
-	Context    map[string]interface{} `json:"context"`
-	APIVersion int                    `json:"api_version,omitempty"`
+	Result interface{} `json:"result"`
 }
 
-func (s *server) Info(ctx context.Context, in *pb.BaseRequest) (*pb.InfoResponse, error) {
-
-	log.Printf("Received: %+v", in)
-	requestID := "cpi-12345"
+func cpi(method string, in *pb.Request) (*pb.Response, []byte, error) {
+	requestID, err := generateRequestID()
+	if err != nil {
+		log.Println("failed to generate unique requestd id", err)
+		return nil, nil, err
+	}
 
 	context := map[string]interface{}{
 		"director_uuid": in.DirectorUuid,
@@ -111,25 +59,101 @@ func (s *server) Info(ctx context.Context, in *pb.BaseRequest) (*pb.InfoResponse
 		}
 	}
 
-	base, result, err := cpi(in.Type, Request{Method: "info", Context: context})
+	cmd := exec.Command(in.Type)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Println("failed to setup cpi command stdin pipe", err)
+		return nil, nil, err
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Println("failed to setup cpi command stdout pipe", err)
+		return nil, nil, err
+	}
+	defer stdout.Close()
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Println("failed to setup cpi command stderr pipe", err)
+		return nil, nil, err
+	}
+	defer stderr.Close()
+
+	cmd.Start()
+
+	input := ExecRequest{Method: method, Context: context}
+	encoder := json.NewEncoder(stdin)
+	encoder.Encode(input)
+	stdin.Close()
+
+	decoder := json.NewDecoder(stdout)
+	cpiResponse := CPIResponse{}
+	err = decoder.Decode(&cpiResponse)
+	if err != nil {
+		log.Println("failed to read cpi response", err)
+		return nil, nil, err
+	}
+
+	stderrContents, err := ioutil.ReadAll(stderr)
+	if err != nil {
+		log.Println("failed to read stderr", err)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		log.Println("failed to run cpi command", err)
+		return nil, nil, err
+	}
+
+	response := &pb.Response{Log: cpiResponse.Log}
+	response.Log += string(stderrContents)
+
+	if cpiResponse.Error != nil {
+		e := cpiResponse.Error
+		response.Error = &pb.Response_Error{
+			Type:      e.Type,
+			Message:   e.Message,
+			OkToRetry: e.OkToRetry,
+		}
+	}
+
+	resultBytes, err := json.Marshal(cpiResponse.Result)
+	if err != nil {
+		log.Println("failed to marshal result bytes", err)
+		return nil, nil, err
+	}
+
+	return response, resultBytes, nil
+}
+
+type ExecRequest struct {
+	Method string `json:"method"`
+	// arguments []string `json:"arguments"`
+	Context    map[string]interface{} `json:"context"`
+	APIVersion int                    `json:"api_version,omitempty"`
+}
+
+func generateRequestID() (string, error) {
+	guid, err := uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("cpi-%s", guid), nil
+}
+
+func (s *server) Info(ctx context.Context, in *pb.Request) (*pb.Response, error) {
+	response, resultBytes, err := cpi("info", in)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("result:", result)
 
-	response := &pb.InfoResponse{Base: base}
-	if v, ok := result["stemcell_formats"]; ok {
-		if stemcellFormats, ok := v.([]interface{}); ok {
-			for _, f := range stemcellFormats {
-				response.StemcellFormats = append(response.StemcellFormats, f.(string))
-			}
-		}
+	infoResponse := &pb.InfoResult{}
+	err = json.Unmarshal(resultBytes, infoResponse)
+	if err != nil {
+		return nil, err
 	}
-	if v, ok := result["api_version"]; ok {
-		response.ApiVersion = int32(v.(float64))
-	}
-
-	log.Printf("RESPONDING WITH: %+v\n", response)
+	response.Result = &pb.Response_InfoResult{InfoResult: infoResponse}
 
 	return response, nil
 }
@@ -144,7 +168,7 @@ func main() {
 	}
 	s := grpc.NewServer()
 	pb.RegisterCPIServer(s, &server{})
-	// Register reflection service on gRPC server.
+
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

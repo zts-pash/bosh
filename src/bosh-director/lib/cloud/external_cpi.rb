@@ -75,28 +75,20 @@ module Bosh::Clouds
     def calculate_vm_cloud_properties(*arguments); invoke_cpi_method(__method__.to_s, *arguments); end
 
     def info
-      # invoke_cpi_method(__method__.to_s)
-
-      # vm_context = {'vm' => {'stemcell' => { 'api_version' => @stemcell_api_version }}}
-      # context.merge!(vm_context) unless @stemcell_api_version.nil?
-      # context.merge!(@properties_from_cpi_config) unless @properties_from_cpi_config.nil?
-      request = Cpi::BaseRequest.new(
+      request = Cpi::Request.new(
         type: @cpi_path,
         director_uuid: @director_uuid,
         properties: @properties_from_cpi_config.to_json,
       )
       request.stemcell_api_version = @stemcell_api_version if @stemcell_api_version
 
-      resp = @client.info(request)
+      response = @client.info(request)
 
-      save_cpi_log(resp.base.log)
-      # save_cpi_log(stderr)
+      save_cpi_log(response.log)
 
-      if !resp.base.error.empty?
-        handle_error(resp.base.error, 'info', 'potato')
-      end
+      handle_error(response.error, 'info', response.request_id) if response.error
 
-      { 'api_version' => resp.api_version, 'stemcell_formats' => resp.stemcell_formats}
+      { 'api_version' => response.info_result.api_version, 'stemcell_formats' => response.info_result.stemcell_formats }
     end
 
     private
