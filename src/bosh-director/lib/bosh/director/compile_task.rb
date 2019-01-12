@@ -59,7 +59,10 @@ module Bosh::Director
     def use_compiled_package(compiled_package)
       @compiled_package = compiled_package
 
+      puts "compile task use_compiled_package, #{compiled_package.package.fingerprint}"
+      puts "compile task jobs #{@jobs.inspect}"
       @jobs.each do |job|
+        
         job.use_compiled_package(@compiled_package)
       end
     end

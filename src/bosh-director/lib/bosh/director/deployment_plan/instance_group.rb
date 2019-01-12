@@ -267,8 +267,12 @@ module Bosh::Director
       # @param [Models::CompiledPackage] compiled_package_model Compiled package
       # @return [void]
       def use_compiled_package(compiled_package_model)
+        puts "instance group use_compiled_package: compiled fingerprint #{compiled_package_model.package.fingerprint}"
+        puts "caller: #{caller.join('\n')}"
         compiled_package = CompiledPackage.new(compiled_package_model)
 
+        # TODO(ch, ja): write test that verifies that compile-time depependencies don't override package names?
+        #  see above how we filter on run_time_dependencies (in package_spec)
         return unless !@packages[compiled_package.name] ||
                       @packages[compiled_package.name].model.id < compiled_package.model.id
 
@@ -296,6 +300,7 @@ module Bosh::Director
         releases_by_package_names = {}
 
         jobs.each do |job|
+          puts "job package names: #{job.model.package_names}"
           job.model.package_names.each do |package_name|
             package = job.release.model.packages.find { |p| p.name == package_name }
 
@@ -311,9 +316,12 @@ module Bosh::Director
             }
           end
         end
+        puts "Releases by package names: #{releases_by_package_names.inspect}"
 
         releases_by_package_names.each do |package_name, packages|
           releases = packages[:usages].group_by { |u| u[:fingerprint] + u[:dependency_set_json] }
+          require 'json'
+          puts "Releases hash is: #{releases.to_json}"
 
           next unless releases.size > 1
           release1jobs, release2jobs = releases.values[0..1]

@@ -112,6 +112,7 @@ module Bosh::Director
               @counter_mutex.synchronize { @compilations_performed += 1 }
             end
 
+            puts "package_compile_stage, #{compiled_package.package.fingerprint}"
             task.use_compiled_package(compiled_package)
           end
         end
