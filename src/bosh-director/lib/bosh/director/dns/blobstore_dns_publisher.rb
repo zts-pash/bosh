@@ -34,7 +34,7 @@ module Bosh::Director
     private
 
     def broadcast(dns_blob)
-      @agent_broadcaster.sync_dns(@agent_broadcaster.filter_instances(nil), dns_blob.blob.blobstore_id, dns_blob.blob.sha1, dns_blob.version) unless dns_blob.nil?
+      # @agent_broadcaster.sync_dns(@agent_broadcaster.filter_instances(nil), dns_blob.blob.blobstore_id, dns_blob.blob.sha1, dns_blob.version) unless dns_blob.nil?
     end
 
     def create_dns_blob(dns_records)

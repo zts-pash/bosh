@@ -1,7 +1,7 @@
 module Bosh::Director
   class AgentBroadcaster
 
-    DEFAULT_BROADCAST_TIMEOUT = 10
+    DEFAULT_BROADCAST_TIMEOUT = 45
     VALID_SYNC_DNS_RESPONSE = 'synced'
 
     def initialize(broadcast_timeout=DEFAULT_BROADCAST_TIMEOUT)

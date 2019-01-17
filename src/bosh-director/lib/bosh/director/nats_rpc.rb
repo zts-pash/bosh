@@ -29,7 +29,8 @@ module Bosh::Director
     # Publishes a payload (encoded as JSON) without expecting a response
     def send_message(client, payload)
       message = JSON.generate(payload)
-      @logger.debug("SENT: #{client} #{message}")
+      # @logger.debug("SENT: #{client} #{message}")
+      @logger.info("$$$$$ MESSAGE SENT: #{client} #{message}")
 
       EM.schedule do
         nats.publish(client, message)
@@ -47,7 +48,8 @@ module Bosh::Director
       sanitized_log_message = sanitize_log_message(request)
       request_body = JSON.generate(request)
 
-      @logger.debug("SENT: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
+      # @logger.debug("SENT: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
+      @logger.info("$$$$$ (thread #{Thread.current.object_id}) REQUEST SENT: #{subject_name} #{sanitized_log_message}")
 
       EM.schedule do
         subscribe_inbox
@@ -58,6 +60,7 @@ module Bosh::Director
             nats.publish(subject_name, request_body)
           end
         end
+        @logger.info("$$$$$ (thread #{Thread.current.object_id}) REQUEST PUBLISHED: #{subject_name} #{sanitized_log_message}")
       end
       request_id
     end
@@ -131,7 +134,8 @@ module Bosh::Director
       begin
         request_id = subject.split(".").last
         callback, options = @lock.synchronize { @requests.delete(request_id) }
-        @logger.debug("RECEIVED: #{subject} #{message}") if (options && options['logging'])
+        # @logger.debug("RECEIVED: #{subject} #{message}") if (options && options['logging'])
+        @logger.info("$$$$$ RECEIVED: #{subject} #{message}")
         if callback
           message = message.empty? ? nil : JSON.parse(message)
           callback.call(message)
