@@ -257,4 +257,78 @@ describe 'compiled releases', type: :integration do
       expect(current_sandbox.cpi.invocations_for_method('create_vm').size).to eq(create_call_count + 1)
     end
   end
+
+  context 'when you have same release complied with multiple stemcell version' do
+    let(:manifest_hash) do
+      {
+          'name' => 'minimal',
+          'director_uuid' => 'deadbeef',
+
+          'releases' => [{
+                             'name' => 'test_release',
+                             'version' => 'latest',
+                         }],
+          'instance_groups' => [{
+                                    'name' => 'job_using_pkg_1',
+                                    'jobs' => [{
+                                                   'name' => 'job_using_pkg_1',
+                                               }],
+                                    'vm_type' => 'a',
+                                    'instances' => 2,
+                                    'networks' => [{ 'name' => 'a' }],
+                                    'stemcell' => 'default',
+                                }],
+
+          'update' => {
+              'canaries' => 2,
+              'canary_watch_time' => 4000,
+              'max_in_flight' => 1,
+              'update_watch_time' => 20,
+          },
+          'stemcells' => [{
+                              'alias' => 'default',
+                              'os' => 'centos-7',
+                              'version' => 'latest',
+                          }],
+      }
+    end
+    let(:deployment_name) { manifest_hash['name'] }
+    let(:cloud_config) { Bosh::Spec::NewDeployments.simple_cloud_config }
+    let(:compiled_release_with_3001_1) { 'compiled_releases/test_release-4+dev.1-centos-7-3001.1-20190129-162910-63094.tgz' }
+    let(:compiled_release_with_3001_3) { 'compiled_releases/test_release-4+dev.1-centos-7-3001.3-20190129-163239-947835.tgz' }
+
+    before do
+      upload_cloud_config(cloud_config_hash: cloud_config)
+      bosh_runner.run("upload-stemcell #{spec_asset('light-bosh-stemcell-3001.1-aws-xen-centos-7-go_agent.tgz')}")
+      bosh_runner.run("upload-release #{spec_asset(compiled_release_with_3001_1)}")
+
+      puts bosh_runner.run("releases")
+      puts bosh_runner.run("ss")
+      puts "------------deploy 3001.1-------------------"
+      puts deploy(manifest_hash: manifest_hash)
+    end
+
+    context 'when minor release version is specified' do
+      before do
+        bosh_runner.run("upload-stemcell #{spec_asset('light-bosh-stemcell-3001.2-aws-xen-centos-7-go_agent.tgz')}")
+        manifest_hash['releases'][0]['version'] = '4+dev.1'
+        manifest_hash['stemcells'][0]['version'] = '3001.2'
+        puts "------------deploy 3001.2-------------------"
+        puts deploy(manifest_hash: manifest_hash)
+      end
+
+      context 'during consecutive deploys (ex. to increase number of instance)' do
+        before do
+          bosh_runner.run("upload-release #{spec_asset(compiled_release_with_3001_3)}")
+          manifest_hash['releases'][0]['version'] = '4+dev.1'
+          manifest_hash['stemcells'][0]['version'] = '3001.2'
+        end
+        it 'should not update instances to latest release' do
+          puts "================deploy 3001.3================="
+          output = deploy(manifest_hash: manifest_hash)
+          expect(output).to_not include('Updating instance job_using_pkg_1')
+        end
+      end
+    end
+  end
 end
