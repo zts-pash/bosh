@@ -41,7 +41,12 @@ module Bosh::Director
 
       migrate_existing_instances_to_global_networking(network_reservation_repository, states_by_existing_instance)
 
-      instance_repo = Bosh::Director::DeploymentPlan::InstanceRepository.new(network_reservation_repository, @logger, @variables_interpolator)
+      instance_repo = Bosh::Director::DeploymentPlan::InstanceRepository.new(
+        network_reservation_repository,
+        @logger,
+        @variables_interpolator,
+      )
+
       index_assigner = Bosh::Director::DeploymentPlan::PlacementPlanner::IndexAssigner.new(@deployment_plan.model)
       instance_plan_factory = Bosh::Director::DeploymentPlan::InstancePlanFactory.new(
         instance_repo,
@@ -186,21 +191,15 @@ module Bosh::Director
     # Binds template models for each release spec in the deployment plan
     # @return [void]
     def bind_templates
-      @deployment_plan.releases.each do |release|
-        release.bind_templates
-      end
-
-      @deployment_plan.instance_groups.each do |job|
-        job.validate_package_names_do_not_collide!
-      end
+      # TODO (JM/GD): Rename bind_templates, and references to templates to jobs or instance groups
+      @deployment_plan.releases.each(&:bind_templates)
+      @deployment_plan.instance_groups.each(&:validate_package_names_do_not_collide!)
     end
 
     # Binds properties for all templates in the deployment
     # @return [void]
     def bind_properties
-      @deployment_plan.instance_groups.each do |instance_group|
-        instance_group.bind_properties
-      end
+      @deployment_plan.instance_groups.each(&:bind_properties)
     end
 
     # Binds stemcell model for each stemcell spec in

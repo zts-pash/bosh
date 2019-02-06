@@ -22,7 +22,7 @@ module Bosh::Director
         instances = Models::Instance.filter(deployment: @deployment).all
       end
 
-      instances = instances.reject {|instance| !instance.expects_vm?}
+      instances = instances.select(&:expects_vm?)
 
       @event_logger.begin_stage("Scanning #{instances.size} VMs", 2)
       results = Hash.new(0)

@@ -312,6 +312,46 @@ describe 'variable generation with config server', type: :integration do
           end
         end
 
+        context 'when one of the instances fail on second deploy' do
+          before do
+            manifest_hash['instance_groups'][0]['jobs'] = [
+                {
+                    'name' => 'job_with_bad_template',
+                    'properties' => job_properties,
+                },
+            ]
+            manifest_hash['instance_groups'][0]['instances'] = 3
+          end
+
+          it 'should still successfuly recreate' do
+            deploy_from_scratch(no_login: true, manifest_hash: manifest_hash, cloud_config_hash: cloud_config, include_credentials: false, env: client_env)
+            manifest_hash['instance_groups'][0]['jobs'][0]['properties']['fail_instance_index'] = 1
+            manifest_hash['instance_groups'][0]['jobs'][0]['properties']['fail_on_job_start'] = true
+
+            manifest_hash['instance_groups'][0]['jobs'][0]['properties']['gargamel']['color'] = '((new_var_a))'
+            manifest_hash['variables'][0]['name'] = 'new_var_a'
+
+
+            output, exit_code = deploy_from_scratch(
+                no_login: true,
+                manifest_hash: manifest_hash,
+                cloud_config_hash: cloud_config,
+                include_credentials: false,
+                env: client_env,
+                failure_expected: true,
+                return_exit_code: true
+            )
+            expect(exit_code).to_not eq(0)
+            expect(output).to include ("pre-start scripts failed")
+
+            puts bosh_runner.run('instances', deployment_name: 'simple', include_credentials: false, env: client_env)
+
+            # recreate should work
+            bosh_runner.run('recreate our_instance_group/0', deployment_name: 'simple', json: true, include_credentials: false, env: client_env)
+            puts bosh_runner.run('instances', deployment_name: 'simple', include_credentials: false, env: client_env)
+          end
+        end
+
         context 'when an addon section references a variable to be generated' do
           let (:variables) do
             [

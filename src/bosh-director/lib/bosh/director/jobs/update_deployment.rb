@@ -388,7 +388,12 @@ module Bosh::Director
       end
 
       def deployment_plan
-        @deployment_plan ||= planner_factory.create_from_manifest(deployment_manifest_object, cloud_config_models, runtime_config_models, @options)
+        @deployment_plan ||= planner_factory.create_from_manifest(
+          deployment_manifest_object,
+          cloud_config_models,
+          runtime_config_models,
+          @options,
+        )
       end
 
       def links_manager

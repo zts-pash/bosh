@@ -8,7 +8,7 @@ module Bosh::Director
     end
 
     # The compile_tasks hash passed in by the caller will be populated with CompileTasks objects
-    def generate!(compile_tasks, job, template, package, stemcell)
+    def generate!(compile_tasks, instance_group, instance, package, stemcell)
       # Our assumption here is that package dependency graph
       # has no cycles: this is being enforced on release upload.
       # Other than that it's a vanilla Depth-First Search (DFS).
@@ -18,17 +18,17 @@ module Bosh::Director
       task = compile_tasks[task_key]
 
       if task # We already visited this task and its dependencies
-        task.add_job(job) # But we still need to register this job with task
+        task.add_job(instance_group) # But we still need to register this instance_group with task
         return task
       end
 
-      release_version = template.release.model
+      release_version = instance.release.model
       package_dependency_manager = PackageDependenciesManager.new(release_version)
       transitive_dependencies = package_dependency_manager.transitive_dependencies(package)
       package_dependency_key = KeyGenerator.new.dependency_key_from_models(package, release_version)
       package_cache_key = Models::CompiledPackage.create_cache_key(package, transitive_dependencies, stemcell.sha1)
 
-      task = CompileTask.new(package, stemcell, job, package_dependency_key, package_cache_key)
+      task = CompileTask.new(package, stemcell, instance_group, package_dependency_key, package_cache_key)
 
       compiled_package = task.find_compiled_package(@logger, @event_log_stage)
 
@@ -38,7 +38,7 @@ module Bosh::Director
       dependencies = package_dependency_manager.dependencies(package)
       dependencies.each do |dependency|
         @logger.info("Package '#{package.desc}' depends on package '#{dependency.desc}'")
-        dependency_task = generate!(compile_tasks, job, template, dependency, stemcell)
+        dependency_task = generate!(compile_tasks, instance_group, instance, dependency, stemcell)
         task.add_dependency(dependency_task)
       end
 

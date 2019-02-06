@@ -6,11 +6,11 @@ module Bosh
           {
             'name' => p.name,
             'version' => p.version,
-            'dependencies' => p.dependency_set
+            'dependencies' => p.dependency_set,
           }
         end
 
-        root_package_hash = {'name' => package.name, 'version' => package.version, 'dependencies' => package.dependency_set}
+        root_package_hash = { 'name' => package.name, 'version' => package.version, 'dependencies' => package.dependency_set}
         package_hashes = PackageDependenciesManager.new(release_version).transitive_dependencies(package)
 
         root_package_hash['dependencies'].sort.map do |dependency_name|

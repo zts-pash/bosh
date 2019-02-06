@@ -167,7 +167,7 @@ module Bosh::Director
       compiled_package_list = Models::CompiledPackage.where(
         :package_id => package.id,
         :stemcell_os => stemcell.os,
-        :dependency_key => dependency_key
+        :dependency_key => dependency_key,
       ).all
 
       compiled_package = compiled_package_list.select do |compiled_package_model|
@@ -177,9 +177,9 @@ module Bosh::Director
       unless compiled_package
         compiled_package = compiled_package_list.select do |compiled_package_model|
           Bosh::Common::Version::StemcellVersion.match(compiled_package_model.stemcell_version, stemcell.version)
-        end.sort_by do |compiled_package_model|
+        end.max_by do |compiled_package_model|
           SemiSemantic::Version.parse(compiled_package_model.stemcell_version).release.components[1] || 0
-        end.last
+        end
       end
       compiled_package
     end

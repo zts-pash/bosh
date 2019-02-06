@@ -265,20 +265,19 @@ describe 'compiled releases', type: :integration do
           'director_uuid' => 'deadbeef',
 
           'releases' => [{
-                             'name' => 'test_release',
-                             'version' => 'latest',
-                         }],
+                 'name' => 'test_release',
+                 'version' => 'latest',
+             }],
           'instance_groups' => [{
-                                    'name' => 'job_using_pkg_1',
-                                    'jobs' => [{
-                                                   'name' => 'job_using_pkg_1',
-                                               }],
-                                    'vm_type' => 'a',
-                                    'instances' => 2,
-                                    'networks' => [{ 'name' => 'a' }],
-                                    'stemcell' => 'default',
-                                }],
-
+                'name' => 'job_using_pkg_1',
+                'jobs' => [{
+                               'name' => 'job_using_pkg_1',
+                           }],
+                'vm_type' => 'a',
+                'instances' => 2,
+                'networks' => [{ 'name' => 'a' }],
+                'stemcell' => 'default',
+            }],
           'update' => {
               'canaries' => 2,
               'canary_watch_time' => 4000,

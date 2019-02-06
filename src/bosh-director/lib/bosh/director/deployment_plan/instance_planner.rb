@@ -8,7 +8,7 @@ module Bosh
         end
 
         def plan_instance_group_instances(instance_group, desired_instances, existing_instance_models, vm_resources_cache)
-          if existing_instance_models.count(&:ignore) > 0
+          if existing_instance_models.count(&:ignore).positive?
             fail_if_specifically_changing_state_of_ignored_vms(instance_group, existing_instance_models)
           end
 
