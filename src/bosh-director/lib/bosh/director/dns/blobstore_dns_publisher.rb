@@ -62,6 +62,25 @@ module Bosh::Director
 
       dns_encoder = LocalDnsEncoderManager.create_dns_encoder
       dns_records = DnsRecords.new(version, Config.local_dns_include_index?, dns_encoder)
+
+      # Models::Links::LinkProviderIntent.all.each do |provider_intent|
+      #   aliases.merge!(JSON.parse(provider_intent.metadata)['dns_aliases'])
+      # end
+
+      provider_intents = Models::Links::LinkProviderIntent.all
+      provider_intents.each do |provider_intent|
+        aliases = JSON.parse(provider_intent.metadata)['dns_aliases']
+        aliases.each do |dns_alias|
+          target = dns_encoder.encode_query({
+            deployment_name: provider_intent.link_provider.deployment.name,
+            group_type: Models::LocalDnsEncodedGroup::Types::LINK,
+            group_name: provider_intent.group_name,
+            root_domain: @domain_name,
+          }, true)
+          dns_records.add_alias(dns_alias['domain'], target)
+        end
+      end
+
       local_dns_records.each do |dns_record|
         dns_records.add_record(
           instance_id:         dns_record.instance.uuid,

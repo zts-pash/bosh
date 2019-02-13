@@ -328,8 +328,27 @@ module Bosh::Director
 
       context 'when have 0 records' do
         it 'returns empty json' do
-          expect(dns_records.to_json).to eq('{"records":[],"version":2,"record_keys":["id","num_id","instance_group","group_ids","az","az_id","network","network_id","deployment","ip","domain","agent_id","instance_index"],"record_infos":[]}')
-          expect(dns_records.to_json).to eq('{"records":[],"version":2,"record_keys":["id","num_id","instance_group","group_ids","az","az_id","network","network_id","deployment","ip","domain","agent_id","instance_index"],"record_infos":[]}')
+          expect(JSON.parse(dns_records.to_json)).to match({
+            records: [],
+            version: 2,
+            record_keys: %w[
+              id
+              num_id
+              instance_group
+              group_ids
+              az
+              az_id
+              network
+              network_id
+              deployment
+              ip
+              domain
+              agent_id
+              instance_index
+            ],
+            record_infos: [],
+            aliases: {},
+          }.stringify_keys)
         end
       end
     end

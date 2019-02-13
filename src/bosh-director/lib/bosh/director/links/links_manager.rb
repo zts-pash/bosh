@@ -47,6 +47,7 @@ module Bosh::Director::Links
       link_provider:,
       link_original_name:,
       link_type:
+      # TODO: dns_aliases
     )
       intent = Bosh::Director::Models::Links::LinkProviderIntent.find(
         link_provider: link_provider,
@@ -58,6 +59,7 @@ module Bosh::Director::Links
           link_provider: link_provider,
           original_name: link_original_name,
           type: link_type,
+          # TODO: dns_aliases
         )
       else
         intent.type = link_type
