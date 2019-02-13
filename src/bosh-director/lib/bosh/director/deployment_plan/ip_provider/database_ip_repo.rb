@@ -38,6 +38,23 @@ module Bosh::Director::DeploymentPlan
       @logger.debug("Reserved ip '#{cidr_ip}' for #{reservation.network.name} as #{reservation_type}")
     end
 
+    def allocate_vip_ip(reservation, subnet)
+      begin
+        ip_address = try_to_allocate_vip_ip(reservation, subnet)
+      rescue NoMoreIPsAvailableAndStopRetrying
+        @logger.debug('Failed to allocate vip ip: no more available')
+        return nil
+      rescue IpFoundInDatabaseAndCanBeRetried
+        @logger.debug('Retrying to allocate vip ip: probably a race condition with another deployment')
+        # IP can be taken by other deployment that runs in parallel
+        # retry until succeeds or out of range
+        retry
+      end
+
+      @logger.debug("Allocated vip IP '#{ip_address.ip}' for #{reservation.network.name}")
+      ip_address.to_i
+    end
+
     def allocate_dynamic_ip(reservation, subnet)
       begin
         ip_address = try_to_allocate_dynamic_ip(reservation, subnet)
@@ -82,6 +99,32 @@ module Bosh::Director::DeploymentPlan
       unless subnet.range == ip_address || subnet.range.contains?(ip_address)
         raise NoMoreIPsAvailableAndStopRetrying
       end
+
+      save_ip(ip_address, reservation, false)
+
+      ip_address
+    end
+
+    # TODO copied from try_to_allocate_dynamic_ip; should refactor/compare behavior
+    def try_to_allocate_vip_ip(reservation, subnet)
+      addresses_in_use = Set.new(all_ip_addresses)
+
+      candidate_ips = subnet.static_ips
+      addresses_we_cant_allocate = addresses_in_use
+
+      # find first in-use address whose subsequent address is not in use
+      # the subsequent address must be free
+      addr = candidate_ips - addresses_in_use
+      if addr.size == 0
+        raise NoMoreIPsAvailableAndStopRetrying
+      end
+
+      # if subnet.range.version == 6
+      #   ip_address = NetAddr::CIDRv6.new(addr+1)
+      # else
+      #   ip_address = NetAddr::CIDRv4.new(addr+1)
+      # end
+      ip_address = NetAddr::CIDR.create(addr.first)
 
       save_ip(ip_address, reservation, false)
 

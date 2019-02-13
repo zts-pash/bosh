@@ -26,6 +26,10 @@ module Bosh::Director
         deployment_network.is_a?(VipNetwork)
       end
 
+      def globally_allocate_vip?
+        vip? && deployment_network.globally_allocate_vip?
+      end
+
       def default_for?(property)
         properties_for_which_the_network_is_the_default.include?(property)
       end

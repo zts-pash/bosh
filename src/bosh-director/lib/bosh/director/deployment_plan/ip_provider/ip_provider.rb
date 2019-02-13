@@ -30,6 +30,24 @@ module Bosh::Director
         end
 
         if reservation.network.is_a?(VipNetwork)
+          if reservation.network.globally_allocate_vip?
+            # Allocate an ip now!
+            filter_subnet_by_instance_az(reservation).each do |subnet|
+              ip = @ip_repo.allocate_vip_ip(reservation, subnet)
+
+              if ip
+                @logger.debug("Reserving static IP '#{format_ip(ip)}' for vip network '#{reservation.network.name}'")
+                reservation.resolve_ip(ip)
+                reservation.resolve_type(:dynamic)
+                reservation.mark_reserved
+                return
+              end
+            end
+
+            raise NetworkReservationNotEnoughCapacity,
+                  "Failed to reserve IP for '#{reservation.instance_model}' for vip network '#{reservation.network.name}': no more available"
+          end
+
           reserve_vip(reservation)
           return
         end
@@ -120,7 +138,14 @@ module Bosh::Director
       def reserve_vip(reservation)
         @logger.debug("Reserving IP '#{format_ip(reservation.ip)}' for vip network '#{reservation.network.name}'")
         @ip_repo.add(reservation)
-        reservation.resolve_type(:static)
+
+        # TODO hacky; probably better for a reservation to know/represent if it needs to be allocated by ip provider
+        if reservation.network.globally_allocate_vip?
+          reservation.resolve_type(:dynamic)
+        else
+          reservation.resolve_type(:static)
+        end
+        
         reservation.mark_reserved
       end
 

@@ -33,11 +33,16 @@ module Bosh::Director::DeploymentPlan
             )
 
             if both_are_dynamic_reservations(existing_reservation, desired_reservation) ||
-               both_are_static_reservations_with_same_ip(existing_reservation, desired_reservation)
+                both_are_static_reservations_with_same_ip(existing_reservation, desired_reservation) ||
+                both_are_static_reservations_with_dynamic_allocation(existing_reservation, desired_reservation)
 
               @logger.debug("Reusing existing reservation #{existing_reservation} for '#{desired_reservation}'")
 
               unplaced_existing_reservations.delete(existing_reservation)
+
+              # TODO we should be validating that dynamic VIP static IPs are still listed in cloud-config;
+              # edge case: deploy w/ global vip assignemnt, remove IP from cloud-config, redeploy (deployment
+              # will probably not notice the existing reservation's IP is no longer valid)
 
               if existing_reservation.network != desired_reservation.network
                 @logger.debug(
@@ -109,6 +114,12 @@ module Bosh::Director::DeploymentPlan
         existing_reservation.type == reservation.type &&
           reservation.static? &&
           reservation.ip == existing_reservation.ip
+      end
+
+      def both_are_static_reservations_with_dynamic_allocation(existing_reservation, reservation)
+        existing_reservation.type == reservation.type &&
+            reservation.network.is_a?(VipNetwork) &&
+            reservation.network.globally_allocate_vip?
       end
 
       def az_is_desired(existing_reservation)
