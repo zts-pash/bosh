@@ -217,7 +217,6 @@ module Bosh::Dev::Sandbox
         dns_enabled: @dns_enabled,
         enable_cpi_resize_disk: @enable_cpi_resize_disk,
         enable_nats_delivered_templates: @enable_nats_delivered_templates,
-        enable_post_deploy: @enable_post_deploy,
         external_cpi_config: external_cpi_config,
         generate_vm_passwords: @generate_vm_passwords,
         local_dns: @local_dns,
@@ -340,7 +339,6 @@ module Bosh::Dev::Sandbox
       @networks = options.fetch(:networks, enable_cpi_management: false)
       @nginx_service.reconfigure(options[:ssl_mode])
       @users_in_manifest = options.fetch(:users_in_manifest, true)
-      @enable_post_deploy = options.fetch(:enable_post_deploy, false)
       @enable_nats_delivered_templates = options.fetch(:enable_nats_delivered_templates, false)
       @enable_cpi_resize_disk = options.fetch(:enable_cpi_resize_disk, false)
       @default_update_vm_strategy = options.fetch(:default_update_vm_strategy, ENV['DEFAULT_UPDATE_VM_STRATEGY'])

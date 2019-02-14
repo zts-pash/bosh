@@ -26,7 +26,6 @@ module Bosh::Director
         :dns,
         :dns_db,
         :enable_cpi_resize_disk,
-        :enable_post_deploy,
         :enable_snapshots,
         :enable_virtual_delete_vms,
         :event_log,
@@ -203,7 +202,6 @@ module Bosh::Director
         @ignore_missing_gateway = config['ignore_missing_gateway']
 
         @keep_unreachable_vms = config.fetch('keep_unreachable_vms', false)
-        @enable_post_deploy = config.fetch('enable_post_deploy', false)
         @enable_nats_delivered_templates = config.fetch('enable_nats_delivered_templates', false)
         @generate_vm_passwords = config.fetch('generate_vm_passwords', false)
         @remove_dev_tools = config['remove_dev_tools']

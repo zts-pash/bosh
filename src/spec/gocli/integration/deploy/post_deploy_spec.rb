@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe 'post deploy scripts', type: :integration do
   context 'when post-deploy scripts are supported' do
-    with_reset_sandbox_before_each(enable_post_deploy: true)
+    with_reset_sandbox_before_each
 
     before do
       upload_cloud_config(cloud_config_hash: Bosh::Spec::NewDeployments.simple_cloud_config)

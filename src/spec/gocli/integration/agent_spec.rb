@@ -340,7 +340,7 @@ describe 'Agent', type: :integration do
     end
 
     context 'when post-deploy is enabled' do
-      with_reset_sandbox_before_each(enable_post_deploy: true)
+      with_reset_sandbox_before_each
 
       it 'calls post-deploy' do
         deploy_from_scratch(manifest_hash: manifest_hash, cloud_config_hash: Bosh::Spec::NewDeployments.simple_cloud_config)
@@ -371,7 +371,7 @@ describe 'Agent', type: :integration do
       end
 
       context 'and enable_nats_delivered_templates is set to TRUE' do
-        with_reset_sandbox_before_each(enable_post_deploy: true, enable_nats_delivered_templates: true)
+        with_reset_sandbox_before_each(enable_nats_delivered_templates: true)
 
         before do
           deploy_from_scratch(manifest_hash: manifest_hash, cloud_config_hash: Bosh::Spec::NewDeployments.simple_cloud_config)
