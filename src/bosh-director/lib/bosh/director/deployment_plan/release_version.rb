@@ -72,10 +72,10 @@ module Bosh::Director
         }
       end
 
-      # Looks up up template model by template name
-      # @param [String] name Template name
+      # Looks up up job model by job name
+      # @param [String] name Job name
       # @return [Models::Template]
-      def get_template_model_by_name(name)
+      def get_job_model_by_name(name)
         @all_jobs ||= @model.templates.each_with_object({}) do |job, all_jobs|
           all_jobs[job.name] = job
         end

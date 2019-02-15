@@ -57,7 +57,7 @@ module Bosh
           end
 
           before do
-            allow(release_version).to receive(:get_template_model_by_name).with('foo').and_return(template_model)
+            allow(release_version).to receive(:get_job_model_by_name).with('foo').and_return(template_model)
             allow(template_model).to receive(:properties).and_return(release_job_spec_prop)
             allow(template_model).to receive(:package_names).and_return([])
 
@@ -132,7 +132,7 @@ module Bosh
           let(:template_model) { instance_double('Bosh::Director::Models::Template') }
 
           before do
-            allow(release_version).to receive(:get_template_model_by_name).with('foo').and_return(template_model)
+            allow(release_version).to receive(:get_job_model_by_name).with('foo').and_return(template_model)
             allow(template_model).to receive(:package_names).and_return([])
             expect(release_version).to receive(:bind_model)
             expect(release_version).to receive(:bind_jobs)
@@ -170,7 +170,7 @@ module Bosh
           let(:file_content_sha1) { Digest::SHA1.hexdigest(file_content) }
 
           before do
-            expect(release_version).to receive(:get_template_model_by_name).with('foo').and_return(template_model)
+            expect(release_version).to receive(:get_job_model_by_name).with('foo').and_return(template_model)
             expect(App).to receive(:instance).and_return(instance)
 
             subject.bind_models

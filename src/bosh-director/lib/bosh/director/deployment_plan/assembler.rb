@@ -183,7 +183,7 @@ module Bosh::Director
       )
     end
 
-    # Binds template models for each release spec in the deployment plan
+    # Binds job models for each release spec in the deployment plan
     # @return [void]
     def bind_jobs
       @deployment_plan.releases.each do |release|
@@ -195,7 +195,7 @@ module Bosh::Director
       end
     end
 
-    # Binds properties for all templates in the deployment
+    # Binds properties for all jobs in the deployment
     # @return [void]
     def bind_properties
       @deployment_plan.instance_groups.each do |instance_group|

@@ -1036,7 +1036,7 @@ describe Bosh::Director::DeploymentPlan::InstanceGroup do
 
     before(:each) do
       allow(registered_release_job_model).to receive(:package_names).and_return(['same-name'])
-      allow(release1).to receive(:get_template_model_by_name).with('foo').and_return registered_release_job_model
+      allow(release1).to receive(:get_job_model_by_name).with('foo').and_return registered_release_job_model
       allow(release1).to receive(:get_package_model_by_name).with('same-name').and_return release1_package1_model
       deployment_plan_job.bind_models
       subject.add_job(deployment_plan_job)

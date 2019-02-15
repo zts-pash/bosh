@@ -16,7 +16,7 @@ module Bosh::Director
       attr_reader :properties
 
       # @param [DeploymentPlan::ReleaseVersion] release Release version
-      # @param [String] name Template name
+      # @param [String] name Job name
       def initialize(release, name)
         @release = release
         @name = name
@@ -34,10 +34,10 @@ module Bosh::Director
         @properties = {}
       end
 
-      # Looks up template model and its package models in DB
+      # Looks up job model and its package models in DB
       # @return [void]
       def bind_models
-        @model = @release.get_template_model_by_name(@name)
+        @model = @release.get_job_model_by_name(@name)
 
         if @model.nil?
           raise DeploymentUnknownTemplate, "Can't find job '#{@name}'"
