@@ -233,6 +233,10 @@ module Bosh
         FileUtils.rm(disk_file(disk_id))
       end
 
+      def create_external_ip
+        "430.#{Random.rand(250)}.12.#{Random.rand(250)}"
+      end
+
       CREATE_NETWORK_SCHEMA = Membrane::SchemaParser.parse { { subnet_definition: Hash } }
       def create_network(subnet_definition)
         validate_and_record_inputs(CREATE_NETWORK_SCHEMA, __method__, subnet_definition)

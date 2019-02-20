@@ -8,7 +8,7 @@ module Bosh::Director::DeploymentPlan
 
       def add_vip_network_plans(instance_plans, vip_networks)
         vip_networks.each do |vip_network|
-          static_ips = vip_network.static_ips.dup
+          static_ips = vip_network.static_ips.dup || []
 
           unplaced_instance_plans = []
           instance_plans.each do |instance_plan|
@@ -20,8 +20,17 @@ module Bosh::Director::DeploymentPlan
             end
           end
 
+          # create static ips if none in pool. Are we supporting the old flow too?
           unplaced_instance_plans.each do |instance_plan|
-            static_ip = static_ips.shift
+            cloud = Bosh::Director::CloudFactory.create.get('')
+
+            static_ip = if static_ips.length > 0
+                          static_ips.shift
+                        else
+                          ip = cloud.create_external_ip
+                          vip_network.static_ips << ip
+                          ip
+                        end
             instance_plan.network_plans << @network_planner.network_plan_with_static_reservation(instance_plan, vip_network, static_ip)
           end
         end

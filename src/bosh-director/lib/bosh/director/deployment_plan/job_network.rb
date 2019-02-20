@@ -5,7 +5,7 @@ module Bosh::Director
 
       def initialize(name, static_ips, default_for, deployment_network)
         @name = name
-        @static_ips = static_ips
+        @static_ips = static_ips || []
         @default_for = default_for
         @deployment_network = deployment_network
       end

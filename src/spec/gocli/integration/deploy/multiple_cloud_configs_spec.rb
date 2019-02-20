@@ -6,6 +6,7 @@ describe 'multiple cloud configs', type: :integration do
   let(:first_cloud_config) do
     cloud_config_hash = Bosh::Spec::NewDeployments.simple_cloud_config
     cloud_config_hash['vm_types'] = [{ 'name' => 'a', 'cloud_properties' => { 'prop-key-a' => 'prop-val-a' } }]
+    # cloud_config_hash['networks'][0]['default'] = %w[dns gateway]
     yaml_file('first-cloud-config', cloud_config_hash)
   end
   let(:second_cloud_config) do
@@ -14,6 +15,14 @@ describe 'multiple cloud configs', type: :integration do
     cloud_config_hash.delete('compilation')
     cloud_config_hash.delete('networks')
     yaml_file('second-cloud-config', cloud_config_hash)
+  end
+
+  let(:vip_cloud_config) do
+    cloud_config_hash = Bosh::Spec::NewDeployments.simple_cloud_config
+    cloud_config_hash['vm_types'] = [{ 'name' => 'vip-vm', 'cloud_properties' => { 'prop-key-vip' => 'prop-val-vip' } }]
+    cloud_config_hash['networks'] = [{'name'=> 'vip-network', 'type' => 'vip', 'managed' => true}]
+    cloud_config_hash.delete('compilation')
+    yaml_file('vip-cloud-config', cloud_config_hash)
   end
   let(:manifest_hash) do
     manifest_hash = Bosh::Spec::NewDeployments.simple_manifest_with_instance_groups
@@ -26,6 +35,24 @@ describe 'multiple cloud configs', type: :integration do
     upload_stemcell
     bosh_runner.run("update-config --name=first-cloud-config --type=cloud #{first_cloud_config.path}")
     bosh_runner.run("update-config --name=second-cloud-config --type=cloud #{second_cloud_config.path}")
+  end
+
+  context 'when VIP network is specifed' do
+    before do
+      bosh_runner.run("update-config --name=vip-cloud-config --type=cloud #{vip_cloud_config.path}")
+    end
+    it 'should add VIP network to the deployment' do
+      manifest = manifest_hash
+      manifest['instance_groups'][0]['instances'] = 1
+
+      manifest['instance_groups'][0]['networks'] << { 'name' => 'vip-network'}
+      manifest['instance_groups'][0]['networks'][0]['default'] = %w[dns gateway]
+      output = deploy_simple_manifest(manifest_hash: manifest)
+      puts output
+
+      puts bosh_runner.run("is --details -d simple")
+      puts bosh_runner.run("vms --vitals -d simple")
+    end
   end
 
   it 'can use configuration from all the uploaded configs' do
