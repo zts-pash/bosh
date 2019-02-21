@@ -14,6 +14,9 @@ module Bosh::Director::DeploymentPlan
           instance_plans.each do |instance_plan|
             static_ip = get_instance_static_ip(instance_plan.existing_instance, vip_network.name, static_ips)
             if static_ip
+              # TODO:
+              # - check what the network type is 'managed' or 'un-managed'
+              vip_network.static_ips << static_ip # keep track of static ip for hotswap if we created it on instance
               instance_plan.network_plans << @network_planner.network_plan_with_static_reservation(instance_plan, vip_network, static_ip)
             else
               unplaced_instance_plans << instance_plan
@@ -41,7 +44,7 @@ module Bosh::Director::DeploymentPlan
       def get_instance_static_ip(existing_instance, network_name, static_ips)
         if existing_instance
           existing_instance_ip = find_ip_for_network(existing_instance, network_name)
-          if existing_instance_ip && static_ips.include?(existing_instance_ip)
+          if existing_instance_ip # don't care if its on the deployment
             static_ips.delete(existing_instance_ip)
             return existing_instance_ip
           end

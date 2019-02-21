@@ -53,6 +53,30 @@ describe 'multiple cloud configs', type: :integration do
       puts bosh_runner.run("is --details -d simple")
       puts bosh_runner.run("vms --vitals -d simple")
     end
+    context 'if hotswap is enabled' do
+      it 'should ignore hotsawp instances' do
+        manifest = manifest_hash
+        manifest['instance_groups'][0]['instances'] = 1
+
+        manifest['instance_groups'][0]['networks'] << { 'name' => 'vip-network'}
+        manifest['instance_groups'][0]['networks'][0]['default'] = %w[dns gateway]
+        output = deploy_simple_manifest(manifest_hash: manifest)
+        puts output
+
+        puts bosh_runner.run("is --details -d simple")
+        puts bosh_runner.run("vms --vitals -d simple")
+
+        # update vm_strategy to perform hot-swap
+        manifest['instance_groups'][0]['update'] = {
+            'vm_strategy' => 'create-swap-delete',
+        }
+        output = deploy_simple_manifest(manifest_hash: manifest)
+
+        puts "======================================================"
+        puts bosh_runner.run("is --details -d simple")
+        puts bosh_runner.run("vms --vitals -d simple")
+      end
+    end
   end
 
   it 'can use configuration from all the uploaded configs' do

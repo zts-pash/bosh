@@ -234,7 +234,7 @@ module Bosh
       end
 
       def create_external_ip
-        "430.#{Random.rand(250)}.12.#{Random.rand(250)}"
+        "130.#{Random.rand(250)}.12.#{Random.rand(250)}"
       end
 
       CREATE_NETWORK_SCHEMA = Membrane::SchemaParser.parse { { subnet_definition: Hash } }
