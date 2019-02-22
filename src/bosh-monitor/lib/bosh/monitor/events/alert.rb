@@ -76,7 +76,8 @@ module Bosh::Monitor
       end
 
       def to_s
-        "Alert @ #{@created_at.utc}, severity #{@severity}: #{@summary}"
+        "Alert @ #{@created_at.utc}, severity #{@severity}: #{(@title || 'Unknown Alert')}"\
+        "#{' - ' + @summary if @title != @summary}"
       end
 
       def to_plain_text

@@ -56,7 +56,7 @@ describe Bhm::Events::Alert do
   it "has string representation" do
     ts = 1320196099
     alert = make_alert(:created_at => ts)
-    expect(alert.to_s).to eq("Alert @ 2011-11-02 01:08:19 UTC, severity 2: Everything is down")
+    expect(alert.to_s).to eq("Alert @ 2011-11-02 01:08:19 UTC, severity 2: Test Alert - Everything is down")
   end
 
   it "has metrics" do
