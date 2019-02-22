@@ -8,7 +8,9 @@ module Bosh::Director::DeploymentPlan
 
       def add_vip_network_plans(instance_plans, vip_networks)
         vip_networks.each do |vip_network|
-          static_ips = vip_network.static_ips.dup || []
+          # Can we call it something other than static_ips? that word is also used in manual networks but refers to something else
+          vip_network.static_ips ||= []
+          static_ips = vip_network.static_ips.dup
 
           unplaced_instance_plans = []
           instance_plans.each do |instance_plan|

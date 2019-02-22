@@ -7,6 +7,8 @@ describe 'multiple cloud configs', type: :integration do
     cloud_config_hash = Bosh::Spec::NewDeployments.simple_cloud_config
     cloud_config_hash['vm_types'] = [{ 'name' => 'a', 'cloud_properties' => { 'prop-key-a' => 'prop-val-a' } }]
     # cloud_config_hash['networks'][0]['default'] = %w[dns gateway]
+    cloud_config_hash['networks'][0]['subnets'][0]['azs'] = %w[z1]
+    cloud_config_hash['compilation']['az'] = 'z1'
     yaml_file('first-cloud-config', cloud_config_hash)
   end
   let(:second_cloud_config) do
@@ -26,18 +28,54 @@ describe 'multiple cloud configs', type: :integration do
   end
   let(:manifest_hash) do
     manifest_hash = Bosh::Spec::NewDeployments.simple_manifest_with_instance_groups
-    manifest_hash['instance_groups'] << Bosh::Spec::NewDeployments.simple_instance_group(name: 'second-foobar', vm_type: 'b')
+    # manifest_hash['instance_groups'] << Bosh::Spec::NewDeployments.simple_instance_group(name: 'second-foobar', vm_type: 'b')
     manifest_hash
   end
+
+  let(:third_cloud_config) do
+    yaml_file('second-cloud-config', {
+      'azs' => [
+        {
+          'name' => 'z1',
+          'cloud_properties' => {},
+        },
+        {
+          'name' => 'z2',
+          'cloud_properties' => {},
+        },
+      ],
+      'networks' => [
+        {
+          'name' => 'manual',
+          'type' => 'manual',
+          'subnets' => [
+            {
+              'azs' => ['z1', 'z2'],
+              'range' => '192.168.1.0/24',
+              'gateway' => '192.168.1.1',
+              'dns' => ['192.168.1.1', '192.168.1.2'],
+              'reserved' => [],
+              'static' => [
+                '192.168.1.100',
+              ],
+              'cloud_properties' => {},
+            }
+          ],
+        },
+      ],
+    })
+  end
+
 
   before do
     create_and_upload_test_release
     upload_stemcell
     bosh_runner.run("update-config --name=first-cloud-config --type=cloud #{first_cloud_config.path}")
     bosh_runner.run("update-config --name=second-cloud-config --type=cloud #{second_cloud_config.path}")
+    bosh_runner.run("update-config --name=third-cloud-config --type=cloud #{third_cloud_config.path}")
   end
 
-  context 'when VIP network is specifed' do
+  context 'when VIP network is specified' do
     before do
       bosh_runner.run("update-config --name=vip-cloud-config --type=cloud #{vip_cloud_config.path}")
     end
@@ -53,6 +91,7 @@ describe 'multiple cloud configs', type: :integration do
       puts bosh_runner.run("is --details -d simple")
       puts bosh_runner.run("vms --vitals -d simple")
     end
+
     context 'if hotswap is enabled' do
       it 'should ignore hotsawp instances' do
         manifest = manifest_hash
@@ -60,6 +99,7 @@ describe 'multiple cloud configs', type: :integration do
 
         manifest['instance_groups'][0]['networks'] << { 'name' => 'vip-network'}
         manifest['instance_groups'][0]['networks'][0]['default'] = %w[dns gateway]
+        manifest['instance_groups'][0]['azs'] = ['z1']
         output = deploy_simple_manifest(manifest_hash: manifest)
         puts output
 
@@ -68,11 +108,33 @@ describe 'multiple cloud configs', type: :integration do
 
         # update vm_strategy to perform hot-swap
         manifest['instance_groups'][0]['update'] = {
-            'vm_strategy' => 'create-swap-delete',
+          'vm_strategy' => 'create-swap-delete',
         }
-        output = deploy_simple_manifest(manifest_hash: manifest)
+        output = deploy_simple_manifest(manifest_hash: manifest, recreate: true)
 
         puts "======================================================"
+        puts bosh_runner.run("is --details -d simple")
+        puts bosh_runner.run("vms --vitals -d simple")
+      end
+    end
+    context 'if manual network is used' do
+      it 'should ignore hotsawp instances' do
+        manifest = manifest_hash
+        manifest['instance_groups'][0]['azs'] = ['z1']
+        manifest['instance_groups'][0]['instances'] = 1
+        manifest['instance_groups'][0]['networks'] = [
+          {
+            'name' => 'manual',
+            'default' => %w[dns gateway],
+            'static_ips' => ['192.168.1.100'],
+          },
+          {
+            'name' => 'vip-network',
+          }
+        ]
+        output = deploy_simple_manifest(manifest_hash: manifest)
+        puts output
+
         puts bosh_runner.run("is --details -d simple")
         puts bosh_runner.run("vms --vitals -d simple")
       end

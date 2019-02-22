@@ -1,11 +1,12 @@
 module Bosh::Director
   module DeploymentPlan
     class JobNetwork
-      attr_reader :name, :static_ips, :deployment_network
+      attr_reader :name, :deployment_network
+      attr_accessor :static_ips
 
-      def initialize(name, static_ips, default_for, deployment_network)
+        def initialize(name, static_ips, default_for, deployment_network)
         @name = name
-        @static_ips = static_ips || []
+        @static_ips = static_ips
         @default_for = default_for
         @deployment_network = deployment_network
       end
