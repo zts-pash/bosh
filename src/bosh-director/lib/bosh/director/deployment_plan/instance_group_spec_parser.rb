@@ -416,13 +416,13 @@ module Bosh::Director
         instances = safe_property(@instance_group_spec, "instances", class: Integer)
         instance_states = safe_property(@instance_group_spec, "instance_states", class: Hash, default: {})
 
-        # networks.each do |network|
-        #   static_ips = network.static_ips
-        #   if static_ips && static_ips.size != instances
-        #     raise InstanceGroupNetworkInstanceIpMismatch,
-        #       "Instance group '#{@instance_group.name}' has #{instances} instances but was allocated #{static_ips.size} static IPs in network '#{network.name}'"
-        #   end
-        # end
+        networks.each do |network|
+          static_ips = network.static_ips
+          if static_ips && static_ips.size != instances
+            raise InstanceGroupNetworkInstanceIpMismatch,
+              "Instance group '#{@instance_group.name}' has #{instances} instances but was allocated #{static_ips.size} static IPs in network '#{network.name}'"
+          end
+        end
 
         instance_states.each_pair do |index_or_id, state|
           unless InstanceGroup::VALID_STATES.include?(state)

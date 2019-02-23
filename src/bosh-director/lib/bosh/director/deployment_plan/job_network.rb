@@ -1,10 +1,9 @@
 module Bosh::Director
   module DeploymentPlan
     class JobNetwork
-      attr_reader :name, :deployment_network
-      attr_accessor :static_ips
+      attr_reader :name, :deployment_network, :static_ips
 
-        def initialize(name, static_ips, default_for, deployment_network)
+      def initialize(name, static_ips, default_for, deployment_network)
         @name = name
         @static_ips = static_ips
         @default_for = default_for
@@ -25,6 +24,10 @@ module Bosh::Director
 
       def vip?
         deployment_network.is_a?(VipNetwork)
+      end
+
+      def managed_vip?
+        deployment_network.is_a?(VipNetwork) && deployment_network.managed_vip?
       end
 
       def default_for?(property)

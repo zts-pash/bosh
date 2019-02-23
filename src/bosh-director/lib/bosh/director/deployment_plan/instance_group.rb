@@ -190,7 +190,7 @@ module Bosh::Director
       end
 
       def should_create_swap_delete?
-        Array(networks).none?(&:static?) && create_swap_delete?
+        Array(networks).none?(&:static?) && !Array(networks).any?(&:managed_vip?) && create_swap_delete?
       end
 
       def needed_instance_plans

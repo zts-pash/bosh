@@ -33,7 +33,7 @@ module Bosh
           end
 
           def has_static_ips?(networks)
-            !networks.nil? && networks.any? { |network| !! network.static_ips }
+            !networks.nil? && networks.any? {|network| !!network.static_ips}
           end
         end
       end

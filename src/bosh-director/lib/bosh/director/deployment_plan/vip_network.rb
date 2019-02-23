@@ -14,6 +14,7 @@ module Bosh::Director
       def initialize(network_spec, logger)
         super(safe_property(network_spec, "name", :class => String), logger)
 
+        @managed = safe_property(network_spec, "managed", default: false)
         @cloud_properties = safe_property(network_spec, "cloud_properties", class: Hash, default: {})
         @reserved_ips = Set.new
         @logger = TaggedLogger.new(logger, 'network-configuration')
@@ -36,6 +37,10 @@ module Bosh::Director
           "ip" => ip_to_netaddr(reservation.ip).ip,
           "cloud_properties" => @cloud_properties
         }
+      end
+
+      def managed_vip?
+        @managed
       end
 
       def ip_type(_)

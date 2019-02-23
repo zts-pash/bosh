@@ -8,34 +8,28 @@ module Bosh::Director::DeploymentPlan
 
       def add_vip_network_plans(instance_plans, vip_networks)
         vip_networks.each do |vip_network|
-          # Can we call it something other than static_ips? that word is also used in manual networks but refers to something else
-          vip_network.static_ips ||= []
-          static_ips = vip_network.static_ips.dup
+          static_ips = vip_network.static_ips.dup || []
 
           unplaced_instance_plans = []
           instance_plans.each do |instance_plan|
-            static_ip = get_instance_static_ip(instance_plan.existing_instance, vip_network.name, static_ips)
+            static_ip = get_instance_static_ip(instance_plan.existing_instance, vip_network, static_ips)
             if static_ip
-              # TODO:
-              # - check what the network type is 'managed' or 'un-managed'
-              vip_network.static_ips << static_ip # keep track of static ip for hotswap if we created it on instance
               instance_plan.network_plans << @network_planner.network_plan_with_static_reservation(instance_plan, vip_network, static_ip)
             else
               unplaced_instance_plans << instance_plan
             end
           end
 
-          # create static ips if none in pool. Are we supporting the old flow too?
           unplaced_instance_plans.each do |instance_plan|
-            cloud = Bosh::Director::CloudFactory.create.get('')
-
-            static_ip = if static_ips.length > 0
-                          static_ips.shift
+            static_ip = if vip_network.managed_vip?
+                          # TODO: think about if we can put in a placeholder here to move ip creation to another place (e.g. right before vm creation)
+                          cloud = Bosh::Director::CloudFactory.create.get('') # TODO pull cpi name from instance plan's [desired] AZ
+                          cloud.create_external_ip
                         else
-                          ip = cloud.create_external_ip
-                          vip_network.static_ips << ip
-                          ip
+                          # pull from unmanaged static ip pool
+                          static_ips.shift
                         end
+            raise "Failed to do something with IPS #{vip_network.pretty_inspect}" unless static_ip
             instance_plan.network_plans << @network_planner.network_plan_with_static_reservation(instance_plan, vip_network, static_ip)
           end
         end
@@ -43,10 +37,10 @@ module Bosh::Director::DeploymentPlan
 
       private
 
-      def get_instance_static_ip(existing_instance, network_name, static_ips)
+      def get_instance_static_ip(existing_instance, network, static_ips)
         if existing_instance
-          existing_instance_ip = find_ip_for_network(existing_instance, network_name)
-          if existing_instance_ip # don't care if its on the deployment
+          existing_instance_ip = find_ip_for_network(existing_instance, network.name)
+          if existing_instance_ip && (static_ips.include?(existing_instance_ip) || network.managed_vip?)
             static_ips.delete(existing_instance_ip)
             return existing_instance_ip
           end
