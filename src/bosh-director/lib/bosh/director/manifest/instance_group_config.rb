@@ -43,5 +43,15 @@ module Bosh::Director
     def network_present?(name)
       @hash['networks'].any? { |network| network['name'] == name }
     end
+
+    def deploy_serial_setting?
+      @hash.key?('update') && @hash['update'].key?('serial')
+    end
+
+    def deploy_serial?
+      return @hash['update']['serial'] if deploy_serial_setting?
+
+      true
+    end
   end
 end

@@ -28,19 +28,46 @@ module Bosh::Director
     def apply_resolutions(resolutions)
       @resolutions = resolutions
       problems = Models::DeploymentProblem.where(id: resolutions.keys)
+      serial_problems = []
+      parallel_problems = []
+      problems.each do |problem|
+        manifest = YAML.safe_load(problem.deployment.manifest, nil)
+        deployment = DeploymentConfig.new(manifest, '')
+        instance = Models::Instance[problem.resource_id]
+
+        if deployment.deploy_serial?(instance.job)
+          serial_problems << problem
+        else
+          parallel_problems << problem
+        end
+      end
 
       begin_stage('Applying problem resolutions', problems.count)
 
-      problems.each do |problem|
+      serial_problems.each do |problem|
         if problem.state != 'open'
           reason = "state is '#{problem.state}'"
           track_and_log("Ignoring problem #{problem.id} (#{reason})")
         elsif problem.deployment_id != @deployment.id
           reason = 'not a part of this deployment'
           track_and_log("Ignoring problem #{problem.id} (#{reason})")
-
         else
           apply_resolution(problem)
+        end
+      end
+      ThreadPool.new(max_threads: Config.max_threads).wrap do |pool|
+        parallel_problems.each do |problem|
+          pool.process do
+            if problem.state != 'open'
+              reason = "state is '#{problem.state}'"
+              track_and_log("Ignoring problem #{problem.id} (#{reason})")
+            elsif problem.deployment_id != @deployment.id
+              reason = 'not a part of this deployment'
+              track_and_log("Ignoring problem #{problem.id} (#{reason})")
+            else
+              apply_resolution(problem)
+            end
+          end
         end
       end
 

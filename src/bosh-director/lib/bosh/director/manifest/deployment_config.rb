@@ -26,6 +26,20 @@ module Bosh::Director
       @manifest_hash
     end
 
+    def deploy_serial?(instance_group_name)
+      instance_group = @instance_groups.find do |ig|
+        ig.name == instance_group_name
+      end
+
+      if instance_group.deploy_serial_setting?
+        instance_group.deploy_serial?
+      elsif @manifest_hash.key?('update') && @manifest_hash['update'].key?('serial')
+        @manifest_hash['update']['serial']
+      else
+        true
+      end
+    end
+
     private
 
     def parse_instance_groups
