@@ -38,6 +38,13 @@ module Bosh::Director
       # because instance's VM could be reconfigured.
       # Drain script can still capture intent from non-final apply spec.
       drain_apply_spec = @instance_plan.spec.as_apply_spec
+      agent_client.run_script(
+        'pre-stop',
+        env: {
+          # TODO: fake env vars for testing; tbd
+          'BOSH_VM' => 'recreate', # vs destroy, no-change
+        },
+      )
       drain_time = agent_client.drain(drain_type, drain_apply_spec)
 
       if drain_time > 0
